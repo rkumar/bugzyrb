@@ -228,6 +228,32 @@ module Cmdapp
     end
     return lines
   end
+  
 
+# edits given text using EDITOR
+# @param [String] text to edit
+# @return [String, nil] edited string, or nil if no change
+def edit_text text
+  # 2010-06-29 10:24 
+  require 'fileutils'
+  require 'tempfile'
+  ed = ENV['EDITOR'] || "vim"
+  temp = Tempfile.new "tmp"
+  File.open(temp,"w"){ |f| f.write text }
+  mtime =  File.mtime(temp.path)
+  system("#{ed} #{temp.path}")
+
+  newmtime = File.mtime(temp.path)
+  newstr = nil
+  if mtime < newmtime
+    # check timestamp, if updated ..
+    newstr = ""
+    File.open(temp,"r"){ |f| f.each {|r| newstr << r } }
+    #puts "I got: #{newstr}"
+  else
+    #puts "user quit without saving"
+  end
+  return newstr
+end
 
 end
