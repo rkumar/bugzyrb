@@ -2,6 +2,7 @@
 require 'rubygems'
 require 'sqlite3'
 require 'pp'
+require 'arrayfields'
 module Database
   class DB
 
@@ -34,7 +35,7 @@ module Database
       return rows
     end
     def select_where table, *wherecond
-      puts " --- #{table} --- #{wherecond} "
+      #puts " --- #{table} --- #{wherecond} "
       @db.type_translation = true
       wherestr = nil
       rows = []
@@ -43,7 +44,7 @@ module Database
         #wherestr = "" unless wherestr
         wherestr = " where #{fields.join(" and ")} "
         if wherestr
-          puts " wherestr #{wherestr}, #{values} "
+          #puts " wherestr #{wherestr}, #{values} "
           #stmt = @db.prepare("select * from #{table} #{wherestr} ", *values)
           @db.execute( "select * from #{table} #{wherestr}", *values  ) do |row|
             if block_given?
@@ -61,7 +62,7 @@ module Database
   # insert a issue or bug report into the database
   # @params
   # @return [Fixnum] last row id
-  def bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified)
+  def bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
     # id = $num
     # status = "CODE" 
     # severity = "CODE" 
@@ -76,14 +77,30 @@ module Database
     # fix = "Some long text" 
     # date_created = $now
     # date_modified = $now
-    @db.execute(" insert into bugs (  status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified ) values (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  
-                status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified )
+    @db.execute(" insert into bugs (  status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix ) values (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  
+                status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix )
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
   def max_bug_id
     id = @db.get_first_value( "select max(id) from bugs;")
     return id
+  end
+  def sql_comments_insert id, comment, date_cr = nil
+    #date_created = date_cr | Time.now
+    @db.execute("insert into comments (id, comment) values (?,?)", id, comment ) 
+    rowid = @db.get_first_value( "select last_insert_rowid();")
+    return rowid
+  end
+  def sql_logs_insert id, field, log
+    #date_created = date_cr | Time.now
+    @db.execute("insert into log (id, field, log) values (?,?,?)", id, field, log ) 
+  end
+  def sql_delete_bug id
+    message "deleting #{id}"
+    @db.execute( "delete from bugs where id = ?", id )
+    @db.execute( "delete from comments where id = ?", id )
+    @db.execute( "delete from logs where id = ?", id )
   end
 
 
@@ -125,9 +142,14 @@ module Database
       print( "update bugs set #{fields.join(" ,")} where id = ?", *values, id)
       @db.execute( "update bugs set #{fields.join(" ,")} where id = ?", *values, id)
     end
+    # 
+    # return a single row from table based on rowid
+    # @param [String] table name
+    # @param [Fixnum] rowid
+    # @return [Array] resultset (based on arrayfield)
     def sql_select_rowid table, id
       # @db.results_as_hash = true
-      require 'arrayfields'
+      return nil if id.nil? or table.nil?
       row = @db.get_first_row( "select * from #{table} where rowid = ?", id )
       return row
     end
