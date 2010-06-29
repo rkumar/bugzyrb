@@ -6,6 +6,7 @@ module Database
   class DB
 
     def initialize dbname="bugzy.sqlite"
+      raise "#{dbname} does not exist. Try --help" unless File.exists? dbname
       @db = SQLite3::Database.new(dbname)
       $now = Time.now
       $num = rand(100)
@@ -80,6 +81,10 @@ module Database
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
+  def max_bug_id
+    id = @db.get_first_value( "select max(id) from bugs;")
+    return id
+  end
 
 
     ## insert a row into bugs using an array
@@ -119,6 +124,12 @@ module Database
 
       print( "update bugs set #{fields.join(" ,")} where id = ?", *values, id)
       @db.execute( "update bugs set #{fields.join(" ,")} where id = ?", *values, id)
+    end
+    def sql_select_rowid table, id
+      # @db.results_as_hash = true
+      require 'arrayfields'
+      row = @db.get_first_row( "select * from #{table} where rowid = ?", id )
+      return row
     end
 
     def separate_field_values array
