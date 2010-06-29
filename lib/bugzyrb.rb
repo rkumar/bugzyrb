@@ -139,6 +139,12 @@ SQL
       message "#{@file} created." if File.exists? @file
       0
   end
+  ##
+  # add an issue or bug
+  # @params [Array] text of bug (ARGV), will be concatenated into single string
+  # @return [0,1] success or fail
+  # TODO: users should be able to switch on or off globals, and pass / change defaults
+  # TODO: reading environ ENV and config file.
   def add args
     db = DB.new
     if args.empty?
@@ -201,6 +207,86 @@ SQL
     puts "Issue #{rowid} created"
     0
   end
+  ##
+  # view details of a single issue/bug
+  # @param [Array] ARGV, first element is issue number
+  #                If no arg supplied then shows highest entry
+  def view args
+    db = DB.new
+    id = args[0].nil? ? db.max_bug_id : args[0]
+    row = db.sql_select_rowid "bugs", id
+    die "No data found for #{id}" unless row
+    puts "[#{row['type']} \##{row['id']}] #{row['title']}"
+    puts row['description']
+    puts 
+    #puts row
+    row.each_pair { |name, val| n = sprintf("%-15s", name); puts "#{n} : #{val}" }
+  end
+  def edit args
+    db = DB.new
+    id = args[0].nil? ? db.max_bug_id : args[0]
+    row = db.sql_select_rowid "bugs", id
+    die "No data found for #{id}" unless row
+    editable = %w[ status severity type assigned_to start_date due_date priority title description fix ]
+    sel = _choice "Select field to edit", editable
+    print "You chose: #{sel}"
+    old =  row[sel]
+    puts " Current value is: #{old}"
+    meth = "ask_#{sel}".to_sym
+    if respond_to? "ask_#{sel}".to_sym
+      str = send meth
+    else
+      print "Enter new value: "
+      str = $stdin.gets
+    end
+    str = old if str.nil? or str == ""
+    puts "got #{str}"
+    db.sql_update "bugs", id, sel, str
+    0
+  end
+  def putxx *args
+    puts "GOT:: #{args}"
+  end
+  def ask_type
+    i_type = _choice("Select type:", %w[bug enhancement feature task] )
+  end
+  def ask_severity
+    i_severity = _choice("Select severity:", %w[normal critical moderate] )
+  end
+  def ask_status
+    i_status = _choice("Select status:", %w[open started closed stopped canceled] )
+  end
+  def ask_priority
+    i_priority = _choice("Select priority:", %w[P1 P2 P3 P4 P5] )
+  end
+  ##
+  # get a date in the future giving how many days
+  # @param [Fixnum] how many days in the future
+  # @return [Time] Date object in future
+  # @example 
+  #   future_date(1).to_s[0..10];  #  => creates a string object with only Date part, no time
+  #   Date.parse(future_date(1).to_s[0..10]) # => converts to a Date object
+
+  def future_date days=1
+    Time.now() + (24 * 60 * 60 * days)
+    #(Time.now() + (24 * 60 * 60) * days).to_s[0..10]; 
+  end
+
+  def ask_due_date
+    days = 1
+    ask("Enter due date?  ", Date) { 
+      |q| q.default = future_date(days).to_s[0..10]; 
+      q.validate = lambda { |p| Date.parse(p) >= Date.parse(Time.now.to_s) }; 
+      q.responses[:not_valid] = "Enter a date greater than today" 
+    }
+  end
+
+  def ask_start_date
+    ask("Enter start date?  ", Date) { 
+      |q| q.default = Time.now.to_s[0..10]; 
+    }
+  end
+
   ##
   # add a subtask
   # @param [Array] 1. item under which to place, 2. text
@@ -273,12 +359,6 @@ SQL
   end
   def check_file filename=@app_file_path
     File.exists?(filename) or die "#{filename} does not exist in this dir. Use 'add' to create an item first."
-  end
-  ##
-  # for historical reasons, I pad item to 3 spaces in text file.
-  # It used to help me in printing straight off without any formatting in unix shell
-  def _paditem item
-    return sprintf("%3s", item)
   end
   ##
   # populates array with open tasks (or all if --show-all)
@@ -895,7 +975,7 @@ SQL
       #$stdin.reopen '/dev/tty'
       ##$stdin.reopen 'read'
     #end
-    puts "got: #{prompt} ::: #{choices} "
+    #puts "got: #{prompt} ::: #{choices} "
     #$stdin.flush
     choose do |menu|
       menu.prompt = prompt
@@ -923,10 +1003,6 @@ SQL
   def sql_select_first_row sql
     db.type_translation = true
     row = db.get_first_row( sql )
-  end
-  def sql_bugs_update id
-    #db.execute( "update bugs where id = ?" ) do |row|
-
   end
   def sql_comments_insert id, comment, date_cr = nil
     date_created = date_cr | Time.now
@@ -1080,6 +1156,14 @@ TEXT
       options[:component] = v
       options[:filter] = true
     }
+  end
+  Subcommands::command :view do |opts|
+    opts.banner = "Usage: view [options] ISSUE_NO"
+    opts.description = "View a given issue"
+  end
+  Subcommands::command :edit do |opts|
+    opts.banner = "Usage: edit [options] ISSUE_NO"
+    opts.description = "Edit a given issue"
   end
   # XXX order of these 2 matters !! reverse and see what happens
   Subcommands::command :pri, :p do |opts|
