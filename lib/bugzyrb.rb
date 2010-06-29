@@ -205,6 +205,7 @@ SQL
     #date_modified = @now
     rowid = db.bugs_insert(i_status, i_severity, i_type, i_assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
     puts "Issue #{rowid} created"
+    rowid = db.sql_logs_insert rowid, "create", "#{rowid} #{i_type}: #{title}"
     0
   end
   ##
@@ -225,6 +226,7 @@ SQL
     db.select_where "comments", "id", id do |r|
       #puts r.join(" | ")
       puts "(#{r['date_created']}) #{r['comment']}"
+      #pp r
     end
   end
   def edit args
@@ -241,7 +243,7 @@ SQL
     if respond_to? "ask_#{sel}".to_sym
       str = send(meth, old)
     else
-      print "Enter new value: "
+      print "Enter value: "
       str = $stdin.gets
     end
     str = old if str.nil? or str == ""
@@ -253,7 +255,43 @@ SQL
     message str
     db.sql_update "bugs", id, sel, str
     puts "Updated #{id}"
+    rowid = db.sql_logs_insert id, sel, "[#{id}] updated [#{sel}] with #{str[0..50]}"
     0
+  end
+  def viewlogs args
+    db = DB.new
+    id = args[0].nil? ? db.max_bug_id : args[0]
+    row = db.sql_select_rowid "bugs", id
+    die "No data found for #{id}" unless row
+    puts "[#{row['type']} \##{row['id']}] #{row['title']}"
+    puts row['description']
+    puts 
+    ctr = 0
+    db.select_where "log", "id", id do |r|
+      ctr += 1
+      puts "(#{r['date_created']}) #{r['field']} \t #{r['log']}"
+      #puts "(#{r['date_created']}) #{r['log']}"
+    end
+    message "No logs found" if ctr == 0
+    0
+  end
+  ## validate user entered id
+  # All methods should call this first.
+  # @param [Fixnum] id (actually can be String) to validate
+  # @return [Database, #execute] database handle
+  # @return [ResultSet] (arrayfields) data of row retrieved
+  # NOTE: exits (die) if no such row
+  def validate_id id, print_header=false
+    db = DB.new
+    id ||= db.max_bug_id # if none supplied get highest - should we do this.
+    row = db.sql_select_rowid "bugs", id
+    die "No data found for #{id}" unless row
+    if print_header
+      puts "[#{row['type']} \##{row['id']}] #{row['title']}"
+      puts row['description']
+      puts 
+    end
+    return db, row
   end
   def putxx *args
     puts "GOT:: #{args}"
@@ -294,6 +332,28 @@ SQL
     die "No issue found for #{id}" unless row
     message "Adding comment to #{id}: #{row['title']}"
     rowid = db.sql_comments_insert id, comment
+    puts "Comment #{rowid} created"
+    rowid = db.sql_logs_insert id, "comment",comment[0..50]
+    0
+  end
+  def log id, field, text
+    id = args.shift
+    unless id
+      id = ask("Issue Id?  ", Integer)
+    end
+    if !args.empty?
+      comment = args.join(" ")
+    else
+      message "Enter a comment (. to exit): "
+      comment = get_lines
+    end
+    die "Operation cancelled" if comment.nil? or comment.empty?
+    message "Comment is: #{comment}."
+    db = DB.new
+    row = db.sql_select_rowid "bugs", id
+    die "No issue found for #{id}" unless row
+    message "Adding comment to #{id}: #{row['title']}"
+    rowid = db.sql_logs_insert id, field, log
     puts "Comment #{rowid} created"
     0
   end
@@ -1168,6 +1228,10 @@ TEXT
   Subcommands::command :comment do |opts|
     opts.banner = "Usage: comment [options] ISSUE_NO TEXT"
     opts.description = "Add comment a given issue"
+  end
+  Subcommands::command :viewlogs do |opts|
+    opts.banner = "Usage: viewlogs [options] ISSUE_NO"
+    opts.description = "view logs for an issue"
   end
   # XXX order of these 2 matters !! reverse and see what happens
   Subcommands::command :pri, :p do |opts|
