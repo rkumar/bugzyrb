@@ -116,21 +116,21 @@ class Bugzy
         title VARCHAR(10),
         description TEXT,
         fix TEXT,
-        date_created  DATETIME default CURRENT_DATETIME,
-        date_modified DATETIME default CURRENT_DATETIME);
+        date_created  DATETIME default CURRENT_TIMESTAMP,
+        date_modified DATETIME default CURRENT_TIMESTAMP);
 
       CREATE TABLE comments (
         rowid INTEGER PRIMARY KEY,
-        id INTEGER ,
-        comment TEXT,
-        date_created DATETIME default CURRENT_DATETIME);
+        id INTEGER NOT NULL ,
+        comment TEXT NOT NULL,
+        date_created DATETIME default CURRENT_TIMESTAMP);
 
       CREATE TABLE log (
         rowid INTEGER PRIMARY KEY,
         id INTEGER ,
         field VARCHAR(15),
         log TEXT,
-        date_created DATETIME default CURRENT_DATETIME);
+        date_created DATETIME default CURRENT_TIMESTAMP);
      
 SQL
 
@@ -201,9 +201,9 @@ SQL
     title = i_title
     description = i_desc
     fix = nil #"Some long text" 
-    date_created = @now
-    date_modified = @now
-    rowid = db.bugs_insert(i_status, i_severity, i_type, i_assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified)
+    #date_created = @now
+    #date_modified = @now
+    rowid = db.bugs_insert(i_status, i_severity, i_type, i_assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
     puts "Issue #{rowid} created"
     0
   end
@@ -221,6 +221,11 @@ SQL
     puts 
     #puts row
     row.each_pair { |name, val| n = sprintf("%-15s", name); puts "#{n} : #{val}" }
+    puts "Comments:"
+    db.select_where "comments", "id", id do |r|
+      #puts r.join(" | ")
+      puts "(#{r['date_created']}) #{r['comment']}"
+    end
   end
   def edit args
     db = DB.new
@@ -234,30 +239,63 @@ SQL
     puts " Current value is: #{old}"
     meth = "ask_#{sel}".to_sym
     if respond_to? "ask_#{sel}".to_sym
-      str = send meth
+      str = send(meth, old)
     else
       print "Enter new value: "
       str = $stdin.gets
     end
     str = old if str.nil? or str == ""
-    puts "got #{str}"
+    unless str
+      message "Operation cancelled."
+      exit 0
+    end
+    message "Updating:"
+    message str
     db.sql_update "bugs", id, sel, str
+    puts "Updated #{id}"
     0
   end
   def putxx *args
     puts "GOT:: #{args}"
   end
-  def ask_type
+  def ask_type old=nil
     i_type = _choice("Select type:", %w[bug enhancement feature task] )
   end
-  def ask_severity
+  def ask_severity old=nil
     i_severity = _choice("Select severity:", %w[normal critical moderate] )
   end
-  def ask_status
+  def ask_status old=nil
     i_status = _choice("Select status:", %w[open started closed stopped canceled] )
   end
-  def ask_priority
+  def ask_priority old=nil
     i_priority = _choice("Select priority:", %w[P1 P2 P3 P4 P5] )
+  end
+  def ask_fix old=nil
+    Cmdapp::edit_text old
+  end
+  def ask_description old=nil
+    Cmdapp::edit_text old
+  end
+  def comment args #id, comment
+    id = args.shift
+    unless id
+      id = ask("Issue Id?  ", Integer)
+    end
+    if !args.empty?
+      comment = args.join(" ")
+    else
+      message "Enter a comment (. to exit): "
+      comment = get_lines
+    end
+    die "Operation cancelled" if comment.nil? or comment.empty?
+    message "Comment is: #{comment}."
+    db = DB.new
+    row = db.sql_select_rowid "bugs", id
+    die "No issue found for #{id}" unless row
+    message "Adding comment to #{id}: #{row['title']}"
+    rowid = db.sql_comments_insert id, comment
+    puts "Comment #{rowid} created"
+    0
   end
   ##
   # get a date in the future giving how many days
@@ -1001,46 +1039,8 @@ SQL
     #bugs_insert(id, status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified)
   end
   def sql_select_first_row sql
-    db.type_translation = true
-    row = db.get_first_row( sql )
-  end
-  def sql_comments_insert id, comment, date_cr = nil
-    date_created = date_cr | Time.now
-    db.execute("insert into comments (id, comment, date_created) values (?,?,?)", id, comment, date_created ) 
-  end
-  def sql_logs_insert id, field, log, date_cr = nil
-    date_created = date_cr | Time.now
-    db.execute("insert into log (id, field, log, date_created) values (?,?,?,?)", id, field, log, date_created ) 
-  end
-  def sql_delete_bug id
-    message "deleting #{id}"
-    db.execute( "delete from bugs where id = ?", id )
-    db.execute( "delete from comments where id = ?", id )
-    db.execute( "delete from logs where id = ?", id )
-  end
-  ## 
-  # insert a issue or bug report into the database
-  # @params
-  # @return [Fixnum] last row id
-  def _bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified)
-    # id = $num
-    # status = "CODE" 
-    # severity = "CODE" 
-    # type = "CODE" 
-    # assigned_to = "CODE" 
-    # start_date = $now
-    # due_date = $now
-    # comment_count = $num
-    # priority = "CODE" 
-    # title = "CODE" 
-    # description = "Some long text" 
-    # fix = "Some long text" 
-    # date_created = $now
-    # date_modified = $now
-    @db.execute(" insert into bugs (  status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified ) values (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  
-                status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified )
-    rowid = @db.get_first_value( "select last_insert_rowid();")
-    return rowid
+    @db.type_translation = true
+    row = @db.get_first_row( sql )
   end
   ## prompts user for multiline input
   # @param [String] text to use as prompt
@@ -1164,6 +1164,10 @@ TEXT
   Subcommands::command :edit do |opts|
     opts.banner = "Usage: edit [options] ISSUE_NO"
     opts.description = "Edit a given issue"
+  end
+  Subcommands::command :comment do |opts|
+    opts.banner = "Usage: comment [options] ISSUE_NO TEXT"
+    opts.description = "Add comment a given issue"
   end
   # XXX order of these 2 matters !! reverse and see what happens
   Subcommands::command :pri, :p do |opts|
