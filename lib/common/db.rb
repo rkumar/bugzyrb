@@ -13,8 +13,6 @@ module Database
       $num = rand(100)
     end
 
-
-
     ## start of table bugs ##
 
     # returns many rows 
@@ -25,6 +23,23 @@ module Database
       @db.type_translation = true
       rows = []
       @db.execute( "select * from #{table} " ) do |row|
+        if block_given?
+          yield row
+        else
+          rows << row
+        end
+      end
+      return nil if rows.empty?
+      return rows
+    end
+    # returns many rows 
+    # @param [String] sql statement
+    # @return [Array, nil] array if rows, else nil
+    def run text
+      puts " --- #{text} ---  "
+      @db.type_translation = true
+      rows = []
+      @db.execute( text ) do |row|
         if block_given?
           yield row
         else
