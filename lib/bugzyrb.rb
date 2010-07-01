@@ -319,6 +319,54 @@ SQL
     message "No logs found" if ctr == 0
     0
   end
+  ##
+  # lists issues
+  # @param [Array] argv: containing Strings containing matching or non-matching terms
+  #     +term means title should include term
+  #     -term means title should not include term
+  # @example
+  #   list +testing
+  #   list testing
+  #   list crash -windows
+  #   list -- -linux
+  def list args
+    # lets look at args as search words
+    incl = []
+    excl = []
+    args.each do |e| 
+      if e[0] == '+'
+        incl << e[1..-1]
+      elsif  e[0] == '-'
+        excl << e[1..-1]
+      else
+        incl << e
+      end
+    end
+    incl = nil if incl.empty?
+    excl = nil if excl.empty?
+    db = get_db
+    #db.run "select * from bugs " do |row|
+    #end
+    fields = "id, title, status, severity, priority, start_date, due_date"
+    if @options[:short]
+      fields = "id, title, status"
+    end
+    rows = db.run "select #{fields} from bugs "
+
+    if incl
+      incl_str = incl.join "|"
+      r = Regexp.new incl_str
+      rows = rows.select { |row| row['title'] =~ r }
+    end
+    if excl
+      excl_str = excl.join "|"
+      r = Regexp.new excl_str
+      rows = rows.select { |row| row['title'] !~ r }
+    end
+    rows.each do |e| 
+      puts e.join " | "
+    end
+  end
   ## validate user entered id
   # All methods should call this first.
   # @param [Fixnum] id (actually can be String) to validate
@@ -679,7 +727,7 @@ SQL
         opts.separator <<TEXT
         #{APPNAME} add "Text ...."
         #{APPNAME} list
-        #{APPNAME} pri 1 A
+        #{APPNAME} start 1
         #{APPNAME} close 1 
 TEXT
   end
@@ -751,6 +799,16 @@ TEXT
   Subcommands::command :comment do |opts|
     opts.banner = "Usage: comment [options] ISSUE_NO TEXT"
     opts.description = "Add comment a given issue"
+  end
+  Subcommands::command :list do |opts|
+    opts.banner = "Usage: list [options] search options"
+    opts.description = "list issues"
+    opts.on("--short", "short listing") { |v|
+      options[:short] = v
+    }
+    opts.on("--long", "long listing") { |v|
+      options[:long] = v
+    }
   end
   Subcommands::command :viewlogs do |opts|
     opts.banner = "Usage: viewlogs [options] ISSUE_NO"
