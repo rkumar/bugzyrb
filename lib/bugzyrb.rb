@@ -102,6 +102,7 @@ class Bugzy
     $default_status = "open"
     $default_priority = "P3"
     $default_due = 5 # how many days in advance due date should be
+    #$bare = @options[:bare]
   end
   %w[type severity status priority].each do |f| 
     eval(
@@ -331,7 +332,6 @@ SQL
   #   list -- -linux
   def list args
     # lets look at args as search words
-    delim = @options[:delimiter] || "\t"
     incl = []
     excl = []
     args.each do |e| 
@@ -348,9 +348,11 @@ SQL
     db = get_db
     #db.run "select * from bugs " do |row|
     #end
-    fields = "id, status, title,severity, priority, start_date, due_date"
+    fields = "id,status,title,severity,priority,start_date,due_date"
     if @options[:short]
-      fields = "id, status, title"
+      fields = "id,status,title"
+    elsif @options[:long]
+      fields = "id,status,title,severity,priority,due_date,description"
     end
     rows = db.run "select #{fields} from bugs "
 
@@ -364,8 +366,20 @@ SQL
       r = Regexp.new excl_str
       rows = rows.select { |row| row['title'] !~ r }
     end
-    rows.each do |e| 
-      puts e.join delim
+    headings = fields.split ","
+    # if you want to filter output send a delimiter
+    if $bare
+      delim = @options[:delimiter] || "\t" 
+      puts headings.join delim
+      rows.each do |e| 
+        puts e.join delim
+      end
+    else
+      # pretty output tabular format etc
+      require 'terminal-table/import'
+      #table = table(nil, *rows)
+      table = table(headings, *rows)
+      puts table
     end
   end
   ## validate user entered id
@@ -669,6 +683,7 @@ SQL
       options = {}
       options[:verbose] = false
       options[:colorize] = true
+      $bare = false
       # adding some env variable pickups, so you don't have to keep passing.
       showall = ENV["TODO_SHOW_ALL"]
       if showall
@@ -812,6 +827,10 @@ TEXT
     }
     opts.on("-d","--delimiter STR", "listing delimiter") { |v|
       options[:delimiter] = v
+    }
+    opts.on("-b","--bare", "unformatted listing, for filtering") { |v|
+      options[:bare] = v
+      $bare = true
     }
   end
   Subcommands::command :viewlogs do |opts|
