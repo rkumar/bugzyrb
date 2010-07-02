@@ -331,6 +331,7 @@ SQL
   #   list -- -linux
   def list args
     # lets look at args as search words
+    delim = @options[:delimiter] || "\t"
     incl = []
     excl = []
     args.each do |e| 
@@ -347,9 +348,9 @@ SQL
     db = get_db
     #db.run "select * from bugs " do |row|
     #end
-    fields = "id, title, status, severity, priority, start_date, due_date"
+    fields = "id, status, title,severity, priority, start_date, due_date"
     if @options[:short]
-      fields = "id, title, status"
+      fields = "id, status, title"
     end
     rows = db.run "select #{fields} from bugs "
 
@@ -364,7 +365,7 @@ SQL
       rows = rows.select { |row| row['title'] !~ r }
     end
     rows.each do |e| 
-      puts e.join " | "
+      puts e.join delim
     end
   end
   ## validate user entered id
@@ -808,6 +809,9 @@ TEXT
     }
     opts.on("--long", "long listing") { |v|
       options[:long] = v
+    }
+    opts.on("-d","--delimiter STR", "listing delimiter") { |v|
+      options[:delimiter] = v
     }
   end
   Subcommands::command :viewlogs do |opts|

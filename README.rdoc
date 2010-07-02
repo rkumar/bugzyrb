@@ -1,26 +1,47 @@
 = bugzyrb
 
 A command-line bug tracking system using sqlite3 as a store.
-This is a port of bugzy.sh (bash shell based tracker that uses tab delimited files).
+This is a port of bugzy.sh (bash-shell based tracker that uses tab delimited files).
+
+Maintains priority, severity, status, fix, comments.
+All updates are logged.
 
 == Features
 
 * Easier than baking cookies
 * Leather Pants
-* TODO
+* other features to come
 
 
 == Installation
 TODO
+Depends on subcommand (wrapper over optionparser for subcommands)
 
 Install [Gemcutter](http://gemcutter.org) and execute:
-  $ sudo gem install bugzyrb
+    $ sudo gem install bugzyrb
 
 == Example
- TODO
+TODO
+
+init:  Initialize a database with tables
+add:   Add an issue -- will prompt for fields
+qadd:  Add an issue -- will use defaults for all fields but title
+view:  view given issue (or last entered)
+
+    bugzyrb init
+    bugzyrb add "Something does not work"
+    bugzyrb qadd "A new issue"
+    bugzyrb qadd --type "feature" --priority "P5" "Another issue"
+    bugzyrb view 1
+
+
+
 
 == Known Issues
 TODO
+
+* Doesn't make coffee (not yet)
+* Occassionally burns toast
 
 == Note on Patches/Pull Requests
  
