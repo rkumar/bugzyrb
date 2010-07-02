@@ -8,14 +8,23 @@ All updates are logged.
 
 == Features
 
-* Easier than baking cookies
-* Leather Pants
+* "Easier than baking cookies"
+* "Leather Pants"
 * other features to come
 
 
 == Installation
+sqlite3 itself has to be installed 
+
+    sudo port install sqlite3
+
 TODO
-Depends on subcommand (wrapper over optionparser for subcommands)
+Depends on :
+* subcommand (tiny wrapper over optionparser for subcommands)
+* sqlite3-ruby
+* highline - for accepting some input
+* terminal-table - for formatting output (this is optional)
+  if you use list --bare, then you don't need this gem
 
 Install [Gemcutter](http://gemcutter.org) and execute:
     $ sudo gem install bugzyrb
@@ -28,11 +37,27 @@ add:   Add an issue -- will prompt for fields
 qadd:  Add an issue -- will use defaults for all fields but title
 view:  view given issue (or last entered)
 
+    bugzyrb help
+    bugzyrb help <command>
     bugzyrb init
-    bugzyrb add "Something does not work"
+    bugzyrb add  "Something does not work"
     bugzyrb qadd "A new issue"
     bugzyrb qadd --type "feature" --priority "P5" "Another issue"
     bugzyrb view 1
+    bugzyrb list
+
+    # list without using terminal-table, for filtering purposes
+    bugzyrb list --bare
+    bugzyrb list --bare --delimited "|"
+
+    # list issues with title containing ruby but not containing python
+    bugzyrb list ruby -python
+
+    # list issues with title not containing python
+    bugzyrb list -- -python
+
+    bugzyrb list --short
+    bugzyrb list --long
 
 
 
