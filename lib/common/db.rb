@@ -13,13 +13,11 @@ module Database
       $num = rand(100)
     end
 
-    ## start of table bugs ##
-
     # returns many rows 
     # @param [Fixnum] id for table with 1:n rows
     # @return [Array, nil] array if rows, else nil
     def select table
-      puts " --- #{table} ---  "
+      #puts " --- #{table} ---  "
       @db.type_translation = true
       rows = []
       @db.execute( "select * from #{table} " ) do |row|
@@ -36,7 +34,7 @@ module Database
     # @param [String] sql statement
     # @return [Array, nil] array if rows, else nil
     def run text
-      puts " --- #{text} ---  "
+      #puts " --- #{text} ---  "
       @db.type_translation = true
       rows = []
       @db.execute( text ) do |row|
