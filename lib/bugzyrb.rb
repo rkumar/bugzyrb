@@ -257,7 +257,7 @@ SQL
   # view details of a single issue/bug
   # @param [Array] ARGV, first element is issue number
   #                If no arg supplied then shows highest entry
-  def view args
+  def view2 args
     db = get_db
     id = args[0].nil? ? db.max_bug_id : args[0]
     db, row = validate_id id
@@ -271,6 +271,27 @@ SQL
     db.select_where "comments", "id", id do |r|
       #puts r.join(" | ")
       puts "(#{r['date_created']}) #{r['comment']}"
+      #pp r
+    end
+  end
+  ## tried out a version of view that uses template replacement
+  # but can't do placement of second column -- it does not come aligned, so forget
+  def view2 args
+    db = get_db
+    id = args[0].nil? ? db.max_bug_id : args[0]
+    db, row = validate_id id
+    die "No data found for #{id}" unless row
+    t =  File.dirname(__FILE__) + "/common/" + "bug.tmpl"
+    template = File::read(t)
+    puts Cmdapp::template_replace(template, row)
+    #puts row
+    #puts "Comments:"
+    t =  File.dirname(__FILE__) + "/common/" + "comment.tmpl"
+    template = File::read(t)
+    db.select_where "comments", "id", id do |r|
+      puts Cmdapp::template_replace(template, r)
+      #puts r.join(" | ")
+      #puts "(#{r['date_created']}) #{r['comment']}"
       #pp r
     end
   end
@@ -372,6 +393,8 @@ SQL
       delim = @options[:delimiter] || "\t" 
       puts headings.join delim
       rows.each do |e| 
+        d = e['description'] 
+        e['description'] = d.gsub(/\n/," ") if d
         puts e.join delim
       end
     else
