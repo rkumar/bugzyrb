@@ -479,6 +479,11 @@ SQL
   def _comment db, id, text
     rowid = db.sql_comments_insert id, text
     puts "Comment #{rowid} created"
+    handle = db.db
+    
+    commcount = handle.get_first_value( "select count(id) from comments where id = #{id};" )
+    commcount = commcount.to_i
+    db.sql_update "bugs", id, "comment_count", commcount
     rowid = db.sql_logs_insert id, "comment",text[0..50]
   end
   def fix args #id, fix
