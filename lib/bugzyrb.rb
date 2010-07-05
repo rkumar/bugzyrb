@@ -91,18 +91,23 @@ class Bugzy
     @today = t.strftime("%Y-%m-%d")
     @verbose = @options[:verbose]
     # menu MENU
-    # TODO: config
-    # we need to read up from config file and update
     @valid_type = %w[bug enhancement feature task] 
     @valid_severity = %w[normal critical moderate] 
     @valid_status = %w[open started closed stopped canceled] 
     @valid_priority = %w[P1 P2 P3 P4 P5] 
+    $prompt_desc = $prompt_type = $prompt_status = $prompt_severity = $prompt_assigned_to = true
+    $default_priority = nil
     $default_type = "bug"
     $default_severity = "normal"
     $default_status = "open"
     $default_priority = "P3"
+    $default_assigned_to = ""
     $default_due = 5 # how many days in advance due date should be
     #$bare = @options[:bare]
+    # we need to load the cfg file here, if given # , or else in home dir.
+    if @options[:config]
+      load @options[:config]
+    end
   end
   %w[type severity status priority].each do |f| 
     eval(
@@ -167,7 +172,8 @@ SQL
   # returns default due date for add or qadd
   # @return [Date] due date 
   def default_due_date
-    Date.parse(future_date($default_due).to_s[0..10]) # => converts to a Date object
+    #Date.parse(future_date($default_due).to_s[0..10]) # => converts to a Date object
+    Date.today + $default_due
   end
   ##
   # quick add which does not prompt user at all, only title is required on commandline
@@ -213,50 +219,92 @@ SQL
     # convert actual newline to C-a. slash n's are escapes so echo -e does not muck up.
     #atitle=$( echo "$atitle" | tr -cd '\40-\176' )
     text.tr! "\n", ''
-    $prompt_desc = $prompt_type = $prompt_status = $prompt_severity = $prompt_assigned_to = true
-    $default_type = $default_severity = $default_status = nil
-    $default_priority = nil
-    i_title = text
-    i_desc = nil
+    title = text
+    desc = nil
     if $prompt_desc
       message "Enter a detailed description (. to exit): "
-      i_desc = get_lines
+      desc = get_lines
     end
-    message "You entered #{i_desc}"
-    i_type = $default_type || "bug"
-    i_severity = $default_severity || "BUG"
-    i_status = $default_status || "OPEN"
-    i_priority = $default_priority || "P3"
+    message "You entered #{desc}"
+    type = $default_type || "bug"
+    severity = $default_severity || "BUG"
+    status = $default_status || "OPEN"
+    priority = $default_priority || "P3"
     if $prompt_type
-      i_type = _choice("Select type:", %w[bug enhancement feature task] )
-      message "You selected #{i_type}"
+      type = _choice("Select type:", %w[bug enhancement feature task] )
+      message "You selected #{type}"
     end
     if $prompt_severity
-      i_severity = _choice("Select severity:", %w[normal critical moderate] )
-      message "You selected #{i_severity}"
+      severity = _choice("Select severity:", %w[normal critical moderate] )
+      message "You selected #{severity}"
     end
     if $prompt_status
       i_status = _choice("Select status:", %w[open started closed stopped canceled] )
-      message "You selected #{i_status}"
+      message "You selected #{status}"
     end
     if $prompt_assigned_to
       message "Assign to:"
-      i_assigned_to = $stdin.gets.chomp
-      message "You selected #{i_assigned_to}"
+      assigned_to = $stdin.gets.chomp
+      message "You selected #{assigned_to}"
+    else
+      assigned_to = $default_assigned_to
     end
     start_date = @now
     due_date = default_due_date
     comment_count = 0
     priority ||= "P3" 
-    title = i_title
-    description = i_desc
+    #title = i_title
+    description = desc
     fix = nil #"Some long text" 
     #date_created = @now
     #date_modified = @now
-    rowid = db.bugs_insert(i_status, i_severity, i_type, i_assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
+    rowid = db.bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
     puts "Issue #{rowid} created"
-    rowid = db.sql_logs_insert rowid, "create", "#{rowid} #{i_type}: #{title}"
+    logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
+    # send an email of some sort needs improbement FIXME
+    #printable = %w[ title description status severity type assigned_to start_date due_date priority fix ]
+    body = {}
+    body["id"] = rowid
+    body["title"]=title
+    body["description"]=description
+    body["type"]=type
+    body["start_date"]=start_date.to_s
+    body["due_date"]=due_date.to_s
+    body["priority"]=priority
+    body["severity"]=severity
+    body["assigned_to"]=assigned_to
+    mail_issue body
+    emailid = "rahul"
+    
     0
+  end
+  def mail_issue row, emailid=nil
+    emailid ||= $default_user
+    body = <<TEXT
+    Id            : #{row['id']} 
+    Title         : #{row['title']} 
+    Description   : #{row['description']} 
+    Type          : #{row['type']} 
+    Start Date    : #{row['start_date']} 
+    Due Date      : #{row['due_date']} 
+    Priority      : #{row['priority']} 
+    Severity      : #{row['severity']} 
+    Assigned To   : #{row['assigned_to']} 
+TEXT
+    title = "#{row['id']}: #{row['title']} "
+    require 'tempfile'
+    temp = Tempfile.new "bugzy"
+    File.open(temp,"w"){ |f| f.write body }
+
+    #cmd = %Q{ echo "#{body}" | mail -s "#{title}" "#{emailid}" }
+    cmd = %Q{ cat #{temp.path} | mail -s "#{title}" "#{emailid}" }
+
+    $stderr.puts "executing: #{cmd}"
+    unless system(cmd)
+      $stderr.puts "Error executing #{cmd}"
+      $stderr.puts $?
+    end
+
   end
   ##
   # view details of a single issue/bug
@@ -596,19 +644,30 @@ SQL
     #(Time.now() + (24 * 60 * 60) * days).to_s[0..10]; 
   end
 
+  ## prompt user for due date, called from edit
+  #def ask_due_date
+    #days = 1
+    #ask("Enter due date?  ", Date) { 
+      #|q| q.default = future_date(days).to_s[0..10]; 
+      #q.validate = lambda { |p| Date.parse(p) >= Date.parse(Time.now.to_s) }; 
+      #q.responses[:not_valid] = "Enter a date greater than today" 
+    #}
+  #end
   # prompt user for due date, called from edit
   def ask_due_date
     days = 1
+    today = Date.today
     ask("Enter due date?  ", Date) { 
-      |q| q.default = future_date(days).to_s[0..10]; 
-      q.validate = lambda { |p| Date.parse(p) >= Date.parse(Time.now.to_s) }; 
+      |q| q.default = today + days;
+      q.validate = lambda { |p| Date.parse(p) >= today }; 
       q.responses[:not_valid] = "Enter a date greater than today" 
     }
   end
 
   def ask_start_date
     ask("Enter start date?  ", Date) { 
-      |q| q.default = Time.now.to_s[0..10]; 
+      #|q| q.default = Time.now.to_s[0..10]; 
+      |q| q.default = Date.today
     }
   end
 
@@ -742,10 +801,14 @@ SQL
     opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
       options[:verbose] = v
     end
-    opts.on("-f", "--file FILENAME", "CSV filename") do |v|
-      options[:file] = v
+    opts.on("-c", "--config FILENAME", "config filename path") do |v|
+      v = File.expand_path v
+      options[:config] = v
+      if !File.exists? v
+        die "#{RED}#{v}: no such file #{CLEAR}"
+      end
     end
-    opts.on("-d DIR", "--dir DIR", "Use TODO file in this directory") do |v|
+    opts.on("-d DIR", "--dir DIR", "Use bugs file in this directory") do |v|
       require 'FileUtils'
       dir = File.expand_path v
       if File.directory? dir
