@@ -11,6 +11,7 @@ module Database
       @db = SQLite3::Database.new(dbname)
       $now = Time.now
       $num = rand(100)
+      $default_user = ENV['LOGNAME'] || ENV['USER']
     end
 
     # returns many rows 
@@ -75,7 +76,7 @@ module Database
   # insert a issue or bug report into the database
   # @params
   # @return [Fixnum] last row id
-  def bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
+  def bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by = $default_user)
     # id = $num
     # status = "CODE" 
     # severity = "CODE" 
@@ -90,8 +91,8 @@ module Database
     # fix = "Some long text" 
     # date_created = $now
     # date_modified = $now
-    @db.execute(" insert into bugs (  status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix ) values (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  
-                status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix )
+    @db.execute(" insert into bugs (  status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by ) values (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  
+                status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by )
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
@@ -99,15 +100,15 @@ module Database
     id = @db.get_first_value( "select max(id) from bugs;")
     return id
   end
-  def sql_comments_insert id, comment, date_cr = nil
+  def sql_comments_insert id, comment, created_by = $default_user
     #date_created = date_cr | Time.now
-    @db.execute("insert into comments (id, comment) values (?,?)", id, comment ) 
+    @db.execute("insert into comments (id, comment, create_by) values (?,?,?)", id, comment, created_by ) 
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
-  def sql_logs_insert id, field, log
+  def sql_logs_insert id, field, log, created_by = $default_user
     #date_created = date_cr | Time.now
-    @db.execute("insert into log (id, field, log) values (?,?,?)", id, field, log ) 
+    @db.execute("insert into log (id, field, log, created_by) values (?,?,?,?)", id, field, log, created_by ) 
   end
   def sql_delete_bug id
     message "deleting #{id}"
@@ -115,14 +116,6 @@ module Database
     @db.execute( "delete from comments where id = ?", id )
     @db.execute( "delete from logs where id = ?", id )
   end
-
-
-    ## insert a row into bugs using an array
-    # @param [Array] array containing values
-    def sql_bugs_insert bind_vars
-      # id, status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified
-      @db.execute( "insert into bugs values (  ? ,? ,? ,? ,? ,? ,? ,? ,? ,? ,? ,? ,? ,?  )", *bind_vars )
-    end
 
 
     ##
@@ -194,7 +187,8 @@ module Database
        fix = nil #"Some long text" 
        date_created = $now
        date_modified = $now
-       bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified)
+       created_by = $default_user
+       bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by)
       #bugs_insert(id, status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, date_created, date_modified)
     end
 

@@ -17,5 +17,10 @@ tmtags
 coverage
 rdoc
 pkg
+TODO2.txt
+serial_number*
+*.sqlite
+*.db
+
 
 ## PROJECT::SPECIFIC

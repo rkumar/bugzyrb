@@ -5,11 +5,12 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "bugzyrb"
-    gem.summary = %Q{command-line bug/issue tracker using sqlite}
-    gem.description = %Q{command-line issue tracker using sqlite}
+    gem.summary = %Q{command-line bug/issue tracker using sqlite, ruby 1.9}
+    gem.description = %Q{command-line issue tracker using sqlite for ruby 1.9}
     gem.email = "sentinel1879@gmail.com"
     gem.homepage = "http://github.com/rkumar/bugzyrb"
     gem.authors = ["Rahul Kumar"]
+    gem.rubyforge_project = "bugzyrb"
     #gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     gem.add_development_dependency "yard", ">= 0.5"
     gem.add_dependency "subcommand", ">= 1.0.5"

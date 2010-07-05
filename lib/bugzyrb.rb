@@ -114,6 +114,8 @@ class Bugzy
 
   # initialize the database in current dir
   # should we add project and/or component ?
+  # schema  - adding created_by for bug and comment and log, but how to get ?
+  #           assuming created by will contain email id so longish.
   def init args=nil
       die "#{@file} already exist. Please delete if you wish to recreate." if File.exists? @file
 
@@ -133,6 +135,7 @@ class Bugzy
         title VARCHAR(10),
         description TEXT,
         fix TEXT,
+        created_by VARCHAR(60),
         date_created  DATETIME default CURRENT_TIMESTAMP,
         date_modified DATETIME default CURRENT_TIMESTAMP);
 
@@ -140,6 +143,7 @@ class Bugzy
         rowid INTEGER PRIMARY KEY,
         id INTEGER NOT NULL ,
         comment TEXT NOT NULL,
+        created_by VARCHAR(60),
         date_created DATETIME default CURRENT_TIMESTAMP);
 
       CREATE TABLE log (
@@ -147,6 +151,7 @@ class Bugzy
         id INTEGER ,
         field VARCHAR(15),
         log TEXT,
+        created_by VARCHAR(60),
         date_created DATETIME default CURRENT_TIMESTAMP);
      
 SQL
@@ -257,7 +262,7 @@ SQL
   # view details of a single issue/bug
   # @param [Array] ARGV, first element is issue number
   #                If no arg supplied then shows highest entry
-  def view2 args
+  def view args
     db = get_db
     id = args[0].nil? ? db.max_bug_id : args[0]
     db, row = validate_id id
@@ -271,6 +276,13 @@ SQL
     db.select_where "comments", "id", id do |r|
       #puts r.join(" | ")
       puts "(#{r['date_created']}) #{r['comment']}"
+      #pp r
+    end
+    puts "Log:"
+    db.select_where "log", "id", id do |r|
+      #puts r.join(" | ")
+      puts "------- (#{r['date_created']}) ------"
+      puts "#{r['field']} #{r['log']} "
       #pp r
     end
   end

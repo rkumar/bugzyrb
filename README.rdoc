@@ -3,8 +3,16 @@
 A command-line bug tracking system using sqlite3 as a store.
 This is a port of bugzy.sh (bash-shell based tracker that uses tab delimited files).
 
-Maintains priority, severity, status, fix, comments.
-All updates are logged.
+This is not an extensive, full-fledged bug or issue tracker such a bugzilla. Its a simple tracker that maintains one sqlite file per directory. Thus, you could create one for each project.
+
+Maintains priority, severity, status, fix, comments.  All updates are logged.
+
+== Purpose
+
+There are already other command-line bug trackers, some ruby some not. I've had problems installing many. As far as ruby ones, some do not work on 1.9 and this bug has not been rectified for over a year. Others rely on gems that are broken and the maintainer has abandoned them.
+
+So finally, for personal needs I wrote bugzy.sh. However, that's bash shell based, and relies on GNU's coreutils being installed with default_names options. I wish to get out of the mess of bash commands having different options across BSD and GNU ( I use a Mac, and use GNU coreutils ).
+So I am rewriting this simple issue tracker in ruby with sqlite3. The advantage over having data in a SQL database is that the user can query it easily. With having data in separate Yaml files, searching filtering etc is a big pain.
 
 == Features
 
@@ -67,6 +75,12 @@ TODO
 
 * Doesn't make coffee (not yet)
 * Occassionally burns toast
+
+== Database 
+
+* bugs table containing title, id, type, statuses, description, fix, start and due date, etc
+* comments table - any number of comments per issue
+* log - a log of whatever activity has happened per issue/bug.
 
 == Note on Patches/Pull Requests
  

@@ -256,4 +256,22 @@ def edit_text text
   return newstr
 end
 
+##
+# reads up template, and substirutes values from myhash
+# @param [String] template text
+# @param [Hash] values to replace in template
+# @return [String] template output
+def template_replace template, myhash
+  #tmpltext=File::read(template);
+
+  t = template.dup
+  t.gsub!( /##(.*?)##/ ) {
+    #raise "Key '#{$1}' found in template but the value has not been set" unless ( myhash.has_key?( $1 ) )
+    myhash[ $1 ].to_s
+  }
+  t
+end
+
+
+
 end
