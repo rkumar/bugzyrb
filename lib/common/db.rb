@@ -5,6 +5,7 @@ require 'pp'
 require 'arrayfields'
 module Database
   class DB
+    attr_accessor :db
 
     def initialize dbname="bugzy.sqlite"
       raise "#{dbname} does not exist. Try --help" unless File.exists? dbname
@@ -102,7 +103,7 @@ module Database
   end
   def sql_comments_insert id, comment, created_by = $default_user
     #date_created = date_cr | Time.now
-    @db.execute("insert into comments (id, comment, create_by) values (?,?,?)", id, comment, created_by ) 
+    @db.execute("insert into comments (id, comment, created_by) values (?,?,?)", id, comment, created_by ) 
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
