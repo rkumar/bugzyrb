@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby -w
+#!/usr/bin/env ruby 
 =begin
   * Name:          bugzyrb.rb
   * Description:   a command line bug tracker uses sqlite3 (port of bugzy.sh)
@@ -141,6 +141,9 @@ class Bugzy
         description TEXT,
         fix TEXT,
         created_by VARCHAR(60),
+        project VARCHAR(10),
+        component VARCHAR(10),
+        version VARCHAR(10),
         date_created  DATETIME default CURRENT_TIMESTAMP,
         date_modified DATETIME default CURRENT_TIMESTAMP);
 
@@ -164,6 +167,16 @@ SQL
       ret = @db.execute_batch( sql )
       # execute batch only returns nil
       message "#{@file} created." if File.exists? @file
+      text = <<-TEXT
+      If you wish to associate projects and/or components and versions to an issue,
+      please add the same in the database using:
+
+        project add <NAME> 
+        component add <PROJECTNAME> <COMPONENT>
+        version add <PROJECTNAME> <VERSION>
+      TEXT
+      message text
+
       0
   end
   def get_db
@@ -227,8 +240,8 @@ SQL
     end
     message "You entered #{desc}"
     type = $default_type || "bug"
-    severity = $default_severity || "BUG"
-    status = $default_status || "OPEN"
+    severity = $default_severity || "normal"
+    status = $default_status || "open"
     priority = $default_priority || "P3"
     if $prompt_type
       type = _choice("Select type:", %w[bug enhancement feature task] )
@@ -249,6 +262,18 @@ SQL
     else
       assigned_to = $default_assigned_to
     end
+    project = component = version = nil
+    # project
+    if $use_project
+      project = user_input('project', $prompt_project, nil, $valid_project, $default_project)
+    end
+    if $use_component
+      component = user_input('component', $prompt_component, nil, $valid_component, $default_component)
+    end
+    if $use_version
+      version = user_input('version', $prompt_version, nil, $valid_version, $default_version)
+    end
+
     start_date = @now
     due_date = default_due_date
     comment_count = 0
@@ -258,13 +283,7 @@ SQL
     fix = nil #"Some long text" 
     #date_created = @now
     #date_modified = @now
-    rowid = db.bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
-    puts "Issue #{rowid} created"
-    logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
-    # send an email of some sort needs improbement FIXME
-    #printable = %w[ title description status severity type assigned_to start_date due_date priority fix ]
     body = {}
-    body["id"] = rowid
     body["title"]=title
     body["description"]=description
     body["type"]=type
@@ -273,8 +292,20 @@ SQL
     body["priority"]=priority
     body["severity"]=severity
     body["assigned_to"]=assigned_to
+    body["created_by"] = $default_user
+    # only insert if its wanted by user
+    body["project"]=project if $use_project
+    body["component"]=component if $use_component
+    body["version"]=version if $use_version
+
+    #rowid = db.bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
+    rowid = db.table_insert_hash("bugs", body)
+    puts "Issue #{rowid} created"
+    logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
+    # send an email of some sort needs improbement FIXME
+    #printable = %w[ title description status severity type assigned_to start_date due_date priority fix ]
+    body["id"] = rowid
     mail_issue body
-    emailid = "rahul"
     
     0
   end
@@ -318,19 +349,30 @@ TEXT
     puts "[#{row['type']} \##{row['id']}] #{row['title']}"
     puts row['description']
     puts 
+    comment_count = 0
     #puts row
-    row.each_pair { |name, val| n = sprintf("%-15s", name); puts "#{n} : #{val}" }
-    puts "Comments:"
-    db.select_where "comments", "id", id do |r|
-      #puts r.join(" | ")
-      puts "(#{r['date_created']}) #{r['comment']}"
-      #pp r
+    row.each_pair { |name, val| 
+      next if name == "project" && !$use_project
+      next if name == "version" && !$use_version
+      next if name == "component" && !$use_component
+      comment_count = val.to_i if name == "comment_count"
+      n = sprintf("%-15s", name); 
+      puts "#{n} : #{val}" 
+    }
+    puts
+    if comment_count > 0
+      puts "Comments   :"
+      db.select_where "comments", "id", id do |r|
+        #puts r.join(" | ")
+        puts "(#{r['date_created']}) [ #{r['created_by']} ] #{r['comment']}"
+        #pp r
+      end
     end
     puts "Log:"
     db.select_where "log", "id", id do |r|
       #puts r.join(" | ")
       puts "------- (#{r['date_created']}) ------"
-      puts "#{r['field']} #{r['log']} "
+      puts "#{r['field']} [ #{r['created_by']} ] #{r['log']} "
       #pp r
     end
   end
@@ -505,6 +547,8 @@ TEXT
   def ask_description old=nil
     Cmdapp::edit_text old
   end
+  ##
+  # prompts user for a cooment to be attached to a issue/bug
   def comment args #id, comment
     id = args.shift
     unless id
@@ -524,6 +568,8 @@ TEXT
     _comment db, id, comment
     0
   end
+  # insert comment into database
+  # called from interactive, as well as "close" or others
   def _comment db, id, text
     rowid = db.sql_comments_insert id, text
     puts "Comment #{rowid} created"
@@ -534,6 +580,7 @@ TEXT
     db.sql_update "bugs", id, "comment_count", commcount
     rowid = db.sql_logs_insert id, "comment",text[0..50]
   end
+  # prompts user for a fix related to an issue
   def fix args #id, fix
     id = args.shift
     unless id
@@ -755,6 +802,47 @@ TEXT
       menu.choices(*choices) do |n|  return n; end
     end
   end
+  #
+  # take user input based on value of flag 
+  # @param [String] column name
+  # @param [Boolean, Symbol] true, false, :freeform, :choice
+  # @param [String, nil] text to prompt
+  # @param [Array, nil] choices array or nil
+  # @param [Object] default value
+  # @return [String, nil] users choice
+  #
+  # TODO: should we not check for the ask_x methods and call them if present.
+  def user_input column, prompt_flag, prompt_text=nil, choices=nil, default=nil
+    if prompt_flag == true
+      prompt_flag = :freeform
+      prompt_flag = :choice if choices
+    end
+    case prompt_flag
+    when :freeform
+      prompt_text ||= "#{column.capitalize}? "
+      str = ask(prompt_text){ |q| q.default = default if default  }
+      return str
+    when :choice
+      prompt_text ||= "Select #{column}:"
+      str = _choice(prompt_text, choices)
+      return str
+    when :multiline, :ml
+      return Cmdapp::edit_text default
+    when false
+      #return nil
+      return default
+    end
+  end
+  def test args=nil
+    if $use_project
+      project = user_input('project', $prompt_project, nil, $valid_project, $default_project)
+      puts project
+    end
+    if $use_component
+      component = user_input('component', $prompt_component, nil, $valid_component, $default_component)
+      puts component
+    end
+  end
   ## prompts user for multiline input
   # @param [String] text to use as prompt
   # @return [String, nil] string with newlines or nil (if nothing entered).
@@ -858,27 +946,27 @@ TEXT
 
   Subcommands::command :add, :a do |opts|
     opts.banner = "Usage: add [options] TEXT"
-    opts.description = "Add a task."
+    opts.description = "Add a bug/issue."
     opts.on("-f", "--[no-]force", "force verbosely") do |v|
       options[:force] = v
     end
-    opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
+    opts.on("-P", "--project PROJECTNAME", "name of project ") { |v|
       options[:project] = v
-      options[:filter] = true
+      #options[:filter] = true
     }
-    opts.on("-p", "--priority PRI",  "priority code for add") { |v|
+    opts.on("-p", "--priority PRI",  "priority code ") { |v|
       options[:priority] = v
     }
-    opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
+    opts.on("-C", "--component COMPONENT",  "component name ") { |v|
       options[:component] = v
     }
-    opts.on("--severity SEV",  "severity code for add") { |v|
+    opts.on("--severity SEV",  "severity code ") { |v|
       options[:severity] = v
     }
-    opts.on("-t", "--type TYPE",  "type code for add") { |v|
+    opts.on("-t", "--type TYPE",  "type code ") { |v|
       options[:type] = v
     }
-    opts.on("--status STATUS",  "status code for add") { |v|
+    opts.on("--status STATUS",  "status code ") { |v|
       options[:status] = v
     }
     opts.on("-a","--assigned-to assignee",  "assigned to whom ") { |v|
@@ -918,6 +1006,10 @@ TEXT
   Subcommands::command :comment do |opts|
     opts.banner = "Usage: comment [options] ISSUE_NO TEXT"
     opts.description = "Add comment a given issue"
+  end
+  Subcommands::command :test do |opts|
+    opts.banner = "Usage: test [options] ISSUE_NO TEXT"
+    opts.description = "Add test a given issue"
   end
   Subcommands::command :list do |opts|
     opts.banner = "Usage: list [options] search options"
