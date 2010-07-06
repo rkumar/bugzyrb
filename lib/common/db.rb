@@ -97,6 +97,32 @@ module Database
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
+  ## takes a hash and creates an insert statement for table and inserts data.
+  # Advantage is that as we add columns, this will add the column to the insert, so we
+  # don't need to keep modifying in many places.
+  # @param [String] name of table to insert data into
+  # @param [Hash] values to insert, keys must be table column names
+  # @return [Fixnum] newly inserted rowid
+  def table_insert_hash table, hash
+    str = "INSERT INTO #{table} ("
+    qstr = [] # question marks
+    fields = [] # field names
+    bind_vars = [] # values to insert
+    hash.each_pair { |name, val| 
+      fields << name
+      bind_vars << val
+      qstr << "?"
+    }
+    fstr = fields.join(",")
+    str << fstr
+    str << ") values ("
+    str << qstr.join(",")
+    str << ")"
+    puts str
+    @db.execute(str, *bind_vars)
+    rowid = @db.get_first_value( "select last_insert_rowid();")
+    return rowid
+  end
   def max_bug_id
     id = @db.get_first_value( "select max(id) from bugs;")
     return id
