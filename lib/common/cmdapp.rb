@@ -241,14 +241,16 @@ def edit_text text
   temp = Tempfile.new "tmp"
   File.open(temp,"w"){ |f| f.write text }
   mtime =  File.mtime(temp.path)
-  system("#{ed} #{temp.path}")
+  #system("#{ed} #{temp.path}")
+  system(ed, temp.path)
 
   newmtime = File.mtime(temp.path)
   newstr = nil
   if mtime < newmtime
     # check timestamp, if updated ..
-    newstr = ""
-    File.open(temp,"r"){ |f| f.each {|r| newstr << r } }
+    #newstr = ""
+    #File.open(temp,"r"){ |f| f.each {|r| newstr << r } }
+    newstr = File.read(temp)
     #puts "I got: #{newstr}"
   else
     #puts "user quit without saving"
