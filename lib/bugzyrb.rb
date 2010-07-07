@@ -206,7 +206,7 @@ SQL
     body['severity']    = @options[:severity] || $default_severity
     body['status']      = @options[:status]   || $default_status
     body['priority']    = @options[:priority] || $default_priority
-    body['assigned_to']    = @options[:assigned_to] 
+    body['assigned_to']    = @options[:assigned_to] || $default_assigned_to
     #comment_count = 0
     #body['description = nil
     #fix = nil
@@ -267,12 +267,11 @@ SQL
       status = _choice("Select status:", %w[open started closed stopped canceled] )
       #message "You selected #{status}"
     end
+    assigned_to = $default_assigned_to
     if $prompt_assigned_to
       message "Assign to:"
       assigned_to = $stdin.gets.chomp
-      message "You selected #{assigned_to}"
-    else
-      assigned_to = $default_assigned_to
+      #message "You selected #{assigned_to}"
     end
     project = component = version = nil
     # project
