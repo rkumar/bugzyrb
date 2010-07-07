@@ -6,7 +6,7 @@ begin
   Jeweler::Tasks.new do |gem|
     gem.name = "bugzyrb"
     gem.summary = %Q{command-line bug/issue tracker using sqlite, ruby 1.9}
-    gem.description = %Q{command-line issue tracker using sqlite for ruby 1.9}
+    gem.description = %Q{basic, easy-to-use command-line issue-tracker using sqlite for ruby 1.9}
     gem.email = "sentinel1879@gmail.com"
     gem.homepage = "http://github.com/rkumar/bugzyrb"
     gem.authors = ["Rahul Kumar"]

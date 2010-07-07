@@ -5,13 +5,13 @@
 
 Gem::Specification.new do |s|
   s.name = %q{bugzyrb}
-  s.version = "0.0.0"
+  s.version = "0.1.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Rahul Kumar"]
-  s.date = %q{2010-07-05}
+  s.date = %q{2010-07-07}
   s.default_executable = %q{bugzyrb}
-  s.description = %q{command-line issue tracker using sqlite for ruby 1.9}
+  s.description = %q{basic, easy-to-use command-line issue-tracker using sqlite for ruby 1.9}
   s.email = %q{sentinel1879@gmail.com}
   s.executables = ["bugzyrb"]
   s.extra_rdoc_files = [
@@ -26,6 +26,7 @@ Gem::Specification.new do |s|
      "Rakefile",
      "VERSION",
      "bin/bugzyrb",
+     "bugzy.cfg",
      "bugzyrb.gemspec",
      "lib/bugzyrb.rb",
      "lib/common/cmdapp.rb",
