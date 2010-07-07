@@ -169,11 +169,15 @@ SQL
       message "#{@file} created." if File.exists? @file
       text = <<-TEXT
       If you wish to associate projects and/or components and versions to an issue,
-      please add the same in the database using:
+      please modify bugzyrb.cfg as follows:
 
-        project add <NAME> 
-        component add <PROJECTNAME> <COMPONENT>
-        version add <PROJECTNAME> <VERSION>
+      $use_project = true
+      $use_component = true
+      $use_version = true
+      Also, fill in valid_project=[...], default_project="x" and prompt_project=true.
+
+      bugzyrb.cfg must be called using -c bugzyrb.cfg if overriding ~/.bugzyrb.cfg
+
       TEXT
       message text
 
@@ -904,6 +908,11 @@ TEXT
       plain = ENV["TODO_PLAIN"]
       if plain
         options[:colorize] = (plain == "0") ? false:true
+      end
+      config = File.expand_path "~/.bugzyrb.cfg"
+      if File.exists? config
+        options[:config] = config
+        puts "found  #{config} "
       end
 
   Subcommands::global_options do |opts|
