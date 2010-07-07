@@ -455,6 +455,33 @@ TEXT
     end
     0
   end
+  def copy args
+    id = args.shift
+    db, row = validate_id id, true
+    puts row.has_key? "id"
+    ret = row.delete_at("id")
+    puts " delete got #{ret} "
+    puts row.has_key? "id"
+    puts row['id']
+    puts row.class
+    pp row
+    row.delete_at("date_created")
+    row.delete_at("date_modified")
+    $stdin.gets
+    row.each_pair { |name, val| puts "(#{name}): #{val} " }
+    ret = ask_title row['title']
+    puts "returning from ask_title"
+    puts ret
+    row['title'] = ret if ret
+    rowid = db.table_insert_hash( "bugs", row)
+
+    title = row['title']
+    type = row['type']
+
+    logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
+    row["id"] = rowid
+    mail_issue row
+  end
   def viewlogs args
     db = get_db
     id = args[0].nil? ? db.max_bug_id : args[0]
@@ -574,6 +601,9 @@ TEXT
     Cmdapp::edit_text old
   end
   def ask_description old=nil
+    Cmdapp::edit_text old
+  end
+  def ask_title old=nil
     Cmdapp::edit_text old
   end
   ##
@@ -1036,6 +1066,10 @@ TEXT
   Subcommands::command :edit do |opts|
     opts.banner = "Usage: edit [options] ISSUE_NO"
     opts.description = "Edit a given issue"
+  end
+  Subcommands::command :copy do |opts|
+    opts.banner = "Usage: copy [options] ISSUE_NO"
+    opts.description = "Copy a given issue"
   end
   Subcommands::command :comment do |opts|
     opts.banner = "Usage: comment [options] ISSUE_NO TEXT"
