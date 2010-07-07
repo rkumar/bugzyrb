@@ -118,7 +118,7 @@ module Database
     str << ") values ("
     str << qstr.join(",")
     str << ")"
-    puts str
+    #puts str
     @db.execute(str, *bind_vars)
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
