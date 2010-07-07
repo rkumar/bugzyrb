@@ -104,6 +104,7 @@ class Bugzy
     $default_assigned_to = ""
     $default_due = 5 # how many days in advance due date should be
     #$bare = @options[:bare]
+    $g_row = nil
     # we need to load the cfg file here, if given # , or else in home dir.
     if @options[:config]
       load @options[:config]
@@ -419,6 +420,7 @@ TEXT
     print "You chose: #{sel}"
     old =  row[sel]
     puts " Current value is: #{old}"
+    $g_row = row
     meth = "ask_#{sel}".to_sym
     if respond_to? "ask_#{sel}".to_sym
       str = send(meth, old)
@@ -435,6 +437,7 @@ TEXT
     message str
     db.sql_update "bugs", id, sel, str
     puts "Updated #{id}"
+    str = str.to_s
     rowid = db.sql_logs_insert id, sel, "[#{id}] updated [#{sel}] with #{str[0..50]}"
     0
   end
@@ -464,7 +467,7 @@ TEXT
     newrow.delete("date_modified")
     #row.each_pair { |name, val| puts "(#{name}): #{val} " }
     ret = ask_title row['title']
-    newrow['title'] = ret if ret
+    newrow['title'] = ret.chomp if ret
     rowid = db.table_insert_hash( "bugs", newrow)
 
     title = newrow['title']
@@ -525,7 +528,12 @@ TEXT
     elsif @options[:long]
       fields = "id,status,title,severity,priority,due_date,description"
     end
-    rows = db.run "select #{fields} from bugs "
+    where = ""
+    if @options[:overdue]
+      where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
+    end
+    rows = db.run "select #{fields} from bugs #{where} "
+    die "No rows" unless rows
 
     if incl
       incl_str = incl.join "|"
@@ -596,7 +604,9 @@ TEXT
     Cmdapp::edit_text old
   end
   def ask_title old=nil
-    Cmdapp::edit_text old
+    ret = Cmdapp::edit_text old
+    return ret.chomp if ret
+    ret
   end
   ##
   # prompts user for a cooment to be attached to a issue/bug
@@ -737,32 +747,24 @@ TEXT
   #   future_date(1).to_s[0..10];  #  => creates a string object with only Date part, no time
   #   Date.parse(future_date(1).to_s[0..10]) # => converts to a Date object
 
-  def future_date days=1
-    Time.now() + (24 * 60 * 60 * days)
-    #(Time.now() + (24 * 60 * 60) * days).to_s[0..10]; 
-  end
-
-  ## prompt user for due date, called from edit
-  #def ask_due_date
-    #days = 1
-    #ask("Enter due date?  ", Date) { 
-      #|q| q.default = future_date(days).to_s[0..10]; 
-      #q.validate = lambda { |p| Date.parse(p) >= Date.parse(Time.now.to_s) }; 
-      #q.responses[:not_valid] = "Enter a date greater than today" 
-    #}
+  #def future_date days=1
+    #Time.now() + (24 * 60 * 60 * days)
   #end
+
   # prompt user for due date, called from edit
-  def ask_due_date
-    days = 1
+  # NOTE: this takes a peek at $g_row to get start_date and validate against that
+  def ask_due_date old=nil
+    days = $default_due
     today = Date.today
-    ask("Enter due date?  ", Date) { 
-      |q| q.default = today + days;
-      q.validate = lambda { |p| Date.parse(p) >= today }; 
-      q.responses[:not_valid] = "Enter a date greater than today" 
+    start = Date.parse($g_row['start_date'].to_s) || today
+    ask("Enter due date? (>= #{start}) ", Date) { 
+      |q| q.default = (today + days).to_s;
+      q.validate = lambda { |p| Date.parse(p) >= start }; 
+      q.responses[:not_valid] = "Enter a date >= than #{start}"
     }
   end
 
-  def ask_start_date
+  def ask_start_date old=nil
     ask("Enter start date?  ", Date) { 
       #|q| q.default = Time.now.to_s[0..10]; 
       |q| q.default = Date.today
@@ -934,7 +936,7 @@ TEXT
       config = File.expand_path "~/.bugzyrb.cfg"
       if File.exists? config
         options[:config] = config
-        puts "found  #{config} "
+        #puts "found  #{config} "
       end
 
   Subcommands::global_options do |opts|
@@ -1086,6 +1088,9 @@ TEXT
     opts.on("-b","--bare", "unformatted listing, for filtering") { |v|
       options[:bare] = v
       $bare = true
+    }
+    opts.on("-o","--overdue", "not closed, due date past") { |v|
+      options[:overdue] = v
     }
   end
   Subcommands::command :viewlogs do |opts|
