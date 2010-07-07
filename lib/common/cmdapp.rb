@@ -263,6 +263,7 @@ end
 # @param [String] template text
 # @param [Hash] values to replace in template
 # @return [String] template output
+# NOTE: probably better to use rdoc/template which can handle arrays as well.
 def template_replace template, myhash
   #tmpltext=File::read(template);
 
