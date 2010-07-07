@@ -101,7 +101,7 @@ class Bugzy
     $default_severity = "normal"
     $default_status = "open"
     $default_priority = "P3"
-    $default_assigned_to = ""
+    $default_assigned_to = "unassigned"
     $default_due = 5 # how many days in advance due date should be
     #$bare = @options[:bare]
     $g_row = nil
@@ -249,23 +249,23 @@ SQL
     if $prompt_desc
       message "Enter a detailed description (. to exit): "
       desc = get_lines
+      #message "You entered #{desc}"
     end
-    message "You entered #{desc}"
     type = $default_type || "bug"
     severity = $default_severity || "normal"
     status = $default_status || "open"
     priority = $default_priority || "P3"
     if $prompt_type
       type = _choice("Select type:", %w[bug enhancement feature task] )
-      message "You selected #{type}"
+      #message "You selected #{type}"
     end
     if $prompt_severity
       severity = _choice("Select severity:", %w[normal critical moderate] )
-      message "You selected #{severity}"
+      #message "You selected #{severity}"
     end
     if $prompt_status
       status = _choice("Select status:", %w[open started closed stopped canceled] )
-      message "You selected #{status}"
+      #message "You selected #{status}"
     end
     if $prompt_assigned_to
       message "Assign to:"
@@ -333,22 +333,16 @@ SQL
     Severity      : #{row['severity']} 
     Assigned To   : #{row['assigned_to']} 
 TEXT
+    body << "    Project       : #{row['project']}\n" if $use_project
+    body << "    Component     : #{row['component']}\n" if $use_component
+    body << "    Version       : #{row['version']}\n" if $use_version
     title = "#{row['id']}: #{row['title']} "
-    require 'tempfile'
-    temp = Tempfile.new "bugzy"
-    File.open(temp,"w"){ |f| f.write body }
 
-    #cmd = %Q{ echo "#{body}" | mail -s "#{title}" "#{emailid}" }
-    # cat is not portable please change
-    cmd = %Q{ cat #{temp.path} | mail -s "#{title}" "#{emailid}" }
-
-    $stderr.puts "executing: #{cmd}"
-    unless system(cmd)
-      $stderr.puts "Error executing #{cmd}"
-      $stderr.puts $?
-    end
-
+    cmd = %{ mail -s "#{title}" "#{emailid}" }
+    #puts cmd
+    Cmdapp::pipe_output(cmd, body)
   end
+
   ##
   # view details of a single issue/bug
   # @param [Array] ARGV, first element is issue number
@@ -912,7 +906,7 @@ TEXT
       #puts "Read: #{$_}"                   # writes to STDOUT
     end
     return nil if str == ""
-    return str
+    return str.chomp
   end
 
   def self.main args
