@@ -141,7 +141,7 @@ module Database
     message "deleting #{id}"
     @db.execute( "delete from bugs where id = ?", id )
     @db.execute( "delete from comments where id = ?", id )
-    @db.execute( "delete from logs where id = ?", id )
+    @db.execute( "delete from log where id = ?", id )
   end
 
 
