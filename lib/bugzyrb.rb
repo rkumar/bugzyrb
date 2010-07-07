@@ -104,6 +104,7 @@ class Bugzy
     $default_assigned_to = "unassigned"
     $default_due = 5 # how many days in advance due date should be
     #$bare = @options[:bare]
+      $use_readline = true
     $g_row = nil
     # we need to load the cfg file here, if given # , or else in home dir.
     if @options[:config]
@@ -271,6 +272,7 @@ SQL
     if $prompt_assigned_to
       message "Assign to:"
       assigned_to = $stdin.gets.chomp
+      # FIXME: use ask with readline, or use readline directly and put earlier values in history.
       #message "You selected #{assigned_to}"
     end
     project = component = version = nil
@@ -297,6 +299,7 @@ SQL
     body["title"]=title
     body["description"]=description
     body["type"]=type
+    body["status"]=status
     body["start_date"]=start_date.to_s
     body["due_date"]=due_date.to_s
     body["priority"]=priority
@@ -409,6 +412,9 @@ TEXT
     row = db.sql_select_rowid "bugs", id
     die "No data found for #{id}" unless row
     editable = %w[ status severity type assigned_to start_date due_date priority title description fix ]
+    editable << "project" if $use_project
+    editable << "component" if $use_component
+    editable << "version" if $use_version
     sel = _choice "Select field to edit", editable
     print "You chose: #{sel}"
     old =  row[sel]
@@ -418,8 +424,10 @@ TEXT
     if respond_to? "ask_#{sel}".to_sym
       str = send(meth, old)
     else
-      print "Enter value: "
-      str = $stdin.gets.chomp
+      #print "Enter value: "
+      #str = $stdin.gets.chomp
+      str = _gets sel, sel, old
+      # FIXME: use ask with readline, or use readline directly and put earlier values in history.
     end
     #str = old if str.nil? or str == ""
     if str.nil? or str == old
@@ -521,11 +529,25 @@ TEXT
     elsif @options[:long]
       fields = "id,status,title,severity,priority,due_date,description"
     end
-    where = ""
+    where = nil
+    wherestring = ""
     if @options[:overdue]
-      where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
+      #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
+      where ||= []
+      where <<  %{ status != 'closed'} 
+      where <<  %{ due_date <= "#{Date.today}" }
     end
-    rows = db.run "select #{fields} from bugs #{where} "
+    if @options[:unassigned]
+      #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
+      where ||= []
+      where <<  %{ (assigned_to = 'unassigned' or assigned_to is null) } 
+    end
+    if where
+      wherestring = " where " + where.join(" and ")
+    end
+    puts wherestring
+
+    rows = db.run "select #{fields} from bugs #{wherestring} "
     die "No rows" unless rows
 
     if incl
@@ -867,6 +889,7 @@ TEXT
     when :freeform
       prompt_text ||= "#{column.capitalize}? "
       str = ask(prompt_text){ |q| q.default = default if default  }
+      # FIXME: readline to push last value in
       return str
     when :choice
       prompt_text ||= "Select #{column}:"
@@ -907,6 +930,37 @@ TEXT
     return nil if str == ""
     return str.chomp
   end
+  def _gets column, prompt, default=nil, oldvalues=nil
+    text = "#{prompt}? "
+    text << "|#{default}|" if default
+    if $use_readline
+      # FIXME: don't push duplicates or blanks
+      require 'readline'
+      filename = ".#{column}.hist"
+      oldstr = ""
+      # if file exists with values push them into history
+      if File.exists? filename
+        oldstr=File.read(filename)
+        Readline::HISTORY.push(*oldstr.split)
+      end
+      # push existing value into history also, so it can be edited
+      Readline::HISTORY.push(default) if default
+      #puts Readline::HISTORY.to_a
+      puts text
+      str = Readline::readline('>', false)
+      if str != oldstr && str != ""
+        # write value to history file, but we should not if it exists
+        File.open(filename, 'a') {|f| f.puts(str) }
+      end
+      str = default if str.nil? or str == ""
+      return str
+    else
+      str = $stdin.gets.chomp
+      str = default if str.nil? or str == ""
+      return str
+    end
+  end
+  # ADD here
 
   def self.main args
     ret = nil
@@ -1084,6 +1138,9 @@ TEXT
     }
     opts.on("-o","--overdue", "not closed, due date past") { |v|
       options[:overdue] = v
+    }
+    opts.on("-u","--unassigned", "not assigned") { |v|
+      options[:unassigned] = v
     }
   end
   Subcommands::command :viewlogs do |opts|
