@@ -129,7 +129,7 @@ class Bugzy
 
       CREATE TABLE bugs (
         id INTEGER PRIMARY KEY,
-        status VARCHAR(10),
+        status VARCHAR(10) NOT NULL,
         severity VARCHAR(10),
         type VARCHAR(10),
         assigned_to VARCHAR(10),
@@ -137,7 +137,7 @@ class Bugzy
         due_date DATE,
         comment_count INTEGER default 0,
         priority VARCHAR(10),
-        title VARCHAR(10),
+        title VARCHAR(10) NOT NULL,
         description TEXT,
         fix TEXT,
         created_by VARCHAR(60),
@@ -193,21 +193,28 @@ SQL
   # all other fields will go in as defaults
   # One may override defaults by specifying options
   def qadd args
+    die "Title required by qadd" if args.nil? or args.empty?
     db = get_db
-    title = args.join " "
-    i_type        = @options[:type]     || $default_type 
-    i_severity    = @options[:severity] || $default_severity
-    i_status      = @options[:status]   || $default_status
-    i_priority    = @options[:priority] || $default_priority
-    i_assigned_to    = @options[:assigned_to] 
-    comment_count = 0
-    description = nil
-    fix = nil
-    start_date = @now
-    due_date = default_due_date
-    rowid = db.bugs_insert(i_status, i_severity, i_type, i_assigned_to, start_date, due_date, comment_count, i_priority, title, description, fix)
+    body = {}
+    body['title'] = args.join " "
+    body['type']        = @options[:type]     || $default_type 
+    body['severity']    = @options[:severity] || $default_severity
+    body['status']      = @options[:status]   || $default_status
+    body['priority']    = @options[:priority] || $default_priority
+    body['assigned_to']    = @options[:assigned_to] 
+    #comment_count = 0
+    #body['description = nil
+    #fix = nil
+    body['start_date']  = @now
+    body['due_date']    = default_due_date
+    #rowid = db.bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
+    rowid = db.table_insert_hash("bugs", body)
     puts "Issue #{rowid} created"
-    rowid = db.sql_logs_insert rowid, "create", "#{rowid} #{i_type}: #{title}"
+    type = body['type']
+    title = body['title']
+    logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
+    body["id"] = rowid
+    mail_issue body
     0
   end
 
@@ -252,7 +259,7 @@ SQL
       message "You selected #{severity}"
     end
     if $prompt_status
-      i_status = _choice("Select status:", %w[open started closed stopped canceled] )
+      status = _choice("Select status:", %w[open started closed stopped canceled] )
       message "You selected #{status}"
     end
     if $prompt_assigned_to
@@ -278,7 +285,6 @@ SQL
     due_date = default_due_date
     comment_count = 0
     priority ||= "P3" 
-    #title = i_title
     description = desc
     fix = nil #"Some long text" 
     #date_created = @now
@@ -328,6 +334,7 @@ TEXT
     File.open(temp,"w"){ |f| f.write body }
 
     #cmd = %Q{ echo "#{body}" | mail -s "#{title}" "#{emailid}" }
+    # cat is not portable please change
     cmd = %Q{ cat #{temp.path} | mail -s "#{title}" "#{emailid}" }
 
     $stderr.puts "executing: #{cmd}"
@@ -378,6 +385,7 @@ TEXT
   end
   ## tried out a version of view that uses template replacement
   # but can't do placement of second column -- it does not come aligned, so forget
+  # NOTE: use rdoc/template instead - can handle arrays
   def view2 args
     db = get_db
     id = args[0].nil? ? db.max_bug_id : args[0]
@@ -424,6 +432,23 @@ TEXT
     db.sql_update "bugs", id, sel, str
     puts "Updated #{id}"
     rowid = db.sql_logs_insert id, sel, "[#{id}] updated [#{sel}] with #{str[0..50]}"
+    0
+  end
+  # deletes given issue
+  # @param [Array] id of issue
+  def delete args
+    id = args.shift
+    if @options[:force]
+      db, row = validate_id id, false
+      db.sql_delete_bug id
+      exit 0
+    end
+    db, row = validate_id id, true
+    if agree("Delete this issue?  ")
+      db.sql_delete_bug id
+    else
+      message "Operation cancelled"
+    end
     0
   end
   def viewlogs args
@@ -530,16 +555,16 @@ TEXT
     puts "GOT:: #{args}"
   end
   def ask_type old=nil
-    i_type = _choice("Select type:", %w[bug enhancement feature task] )
+    type = _choice("Select type:", %w[bug enhancement feature task] )
   end
   def ask_severity old=nil
-    i_severity = _choice("Select severity:", %w[normal critical moderate] )
+    severity = _choice("Select severity:", %w[normal critical moderate] )
   end
   def ask_status old=nil
-    i_status = _choice("Select status:", %w[open started closed stopped canceled] )
+    status = _choice("Select status:", %w[open started closed stopped canceled] )
   end
   def ask_priority old=nil
-    i_priority = _choice("Select priority:", %w[P1 P2 P3 P4 P5] )
+    priority = _choice("Select priority:", %w[P1 P2 P3 P4 P5] )
   end
   def ask_fix old=nil
     Cmdapp::edit_text old
