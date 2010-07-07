@@ -258,6 +258,24 @@ def edit_text text
   return newstr
 end
 
+# pipes given string to command
+# @param [String] command to pipe data to
+# @param [String] data to pipe to command
+# @example
+#     cmd = %{mail -s "my title" rahul}
+#     pipe_output(cmd, "some long text")
+# FIXME: not clear how to return error.
+# NOTE: this is obviously more portable than using system echo or system cat.
+def pipe_output (pipeto, str)
+  #pipeto = '/usr/sbin/sendmail -t'
+  #pipeto = %q{mail -s "my title" rahul}
+  if pipeto != nil  # i was taking pipeto from a hash, so checking
+    proc = IO.popen(pipeto, "w+")
+    proc.puts str
+    proc.close_write
+    #puts proc.gets
+  end
+end
 ##
 # reads up template, and substirutes values from myhash
 # @param [String] template text
