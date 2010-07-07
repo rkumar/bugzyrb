@@ -458,29 +458,21 @@ TEXT
   def copy args
     id = args.shift
     db, row = validate_id id, true
-    puts row.has_key? "id"
-    ret = row.delete_at("id")
-    puts " delete got #{ret} "
-    puts row.has_key? "id"
-    puts row['id']
-    puts row.class
-    pp row
-    row.delete_at("date_created")
-    row.delete_at("date_modified")
-    $stdin.gets
-    row.each_pair { |name, val| puts "(#{name}): #{val} " }
+    newrow = row.to_hash
+    ret = newrow.delete("id")
+    newrow.delete("date_created")
+    newrow.delete("date_modified")
+    #row.each_pair { |name, val| puts "(#{name}): #{val} " }
     ret = ask_title row['title']
-    puts "returning from ask_title"
-    puts ret
-    row['title'] = ret if ret
-    rowid = db.table_insert_hash( "bugs", row)
+    newrow['title'] = ret if ret
+    rowid = db.table_insert_hash( "bugs", newrow)
 
-    title = row['title']
-    type = row['type']
+    title = newrow['title']
+    type = newrow['type']
 
     logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
-    row["id"] = rowid
-    mail_issue row
+    newrow["id"] = rowid
+    mail_issue newrow
   end
   def viewlogs args
     db = get_db
