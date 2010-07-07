@@ -150,7 +150,7 @@ module Database
     # @param [Fixnum] id unique key
     # @param [String] fieldname 
     # @param [String] value to update
-    # @example sql_bugs_update 9, :name, "Roger"
+    # @example sql_update "bugs", 9, :name, "Roger"
     def sql_update table, id, field, value
       @db.execute( "update #{table} set #{field} = ?, date_modified = ? where id = ?", value,$now, id)
     end
