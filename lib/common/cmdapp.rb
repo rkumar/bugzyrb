@@ -322,6 +322,7 @@ def history_read column, default=nil
   # push existing value into history also, so it can be edited
   values.push(default) if default
   values.uniq!
+  Readline::HISTORY.clear # else previous values of other fields also come in
   Readline::HISTORY.push(*values) unless values.empty?
   #puts Readline::HISTORY.to_a
 end
