@@ -273,7 +273,6 @@ SQL
       message "Assign to:"
       #assigned_to = $stdin.gets.chomp
       assigned_to = _gets "assigned_to", "assigned_to", $default_assigned_to
-      # FIXME: use ask with readline, or use readline directly and put earlier values in history.
       #message "You selected #{assigned_to}"
     end
     project = component = version = nil
@@ -316,8 +315,6 @@ SQL
     rowid = db.table_insert_hash("bugs", body)
     puts "Issue #{rowid} created"
     logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
-    # send an email of some sort needs improbement FIXME
-    #printable = %w[ title description status severity type assigned_to start_date due_date priority fix ]
     body["id"] = rowid
     mail_issue body
     
@@ -428,7 +425,6 @@ TEXT
       #print "Enter value: "
       #str = $stdin.gets.chomp
       str = _gets sel, sel, old
-      # FIXME: use ask with readline, or use readline directly and put earlier values in history.
     end
     #str = old if str.nil? or str == ""
     if str.nil? or str == old
@@ -888,9 +884,9 @@ TEXT
     end
     case prompt_flag
     when :freeform
-      prompt_text ||= "#{column.capitalize}? "
-      str = ask(prompt_text){ |q| q.default = default if default  }
-      # FIXME: readline to push last value in
+      prompt_text ||= "#{column.capitalize}"
+      #str = ask(prompt_text){ |q| q.default = default if default  }
+      str = _gets(column, prompt_text, default)
       return str
     when :choice
       prompt_text ||= "Select #{column}:"
