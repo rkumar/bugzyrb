@@ -271,7 +271,8 @@ SQL
     assigned_to = $default_assigned_to
     if $prompt_assigned_to
       message "Assign to:"
-      assigned_to = $stdin.gets.chomp
+      #assigned_to = $stdin.gets.chomp
+      assigned_to = _gets "assigned_to", "assigned_to", $default_assigned_to
       # FIXME: use ask with readline, or use readline directly and put earlier values in history.
       #message "You selected #{assigned_to}"
     end
@@ -930,34 +931,14 @@ TEXT
     return nil if str == ""
     return str.chomp
   end
-  def _gets column, prompt, default=nil, oldvalues=nil
+  def _gets column, prompt, default=nil
     text = "#{prompt}? "
     text << "|#{default}|" if default
     puts text
     if $use_readline
       Cmdapp::history_read column, default
-      # FIXME: don't push duplicates or blanks
-      #require 'readline'
-      #filename = ".#{column}.hist"
-      #oldstr = ""
-      ## if file exists with values push them into history
-      #values = []
-      #if File.exists? filename
-        #oldstr=File.read(filename)
-        ##Readline::HISTORY.push(*oldstr.split)
-        #values.push(*oldstr.split)
-      #end
-      ## push existing value into history also, so it can be edited
-      #values.push(default) if default
-      #values.uniq!
-      #Readline::HISTORY.push(*values)
-      ##puts Readline::HISTORY.to_a
       str = Readline::readline('>', false)
       Cmdapp::history_save column, str
-      #if str != oldstr && str != ""
-        ## write value to history file, but we should not if it exists
-        #File.open(filename, 'a') {|f| f.puts(str) }
-      #end
       str = default if str.nil? or str == ""
       return str
     else
