@@ -933,25 +933,31 @@ TEXT
   def _gets column, prompt, default=nil, oldvalues=nil
     text = "#{prompt}? "
     text << "|#{default}|" if default
+    puts text
     if $use_readline
+      Cmdapp::history_read column, default
       # FIXME: don't push duplicates or blanks
-      require 'readline'
-      filename = ".#{column}.hist"
-      oldstr = ""
-      # if file exists with values push them into history
-      if File.exists? filename
-        oldstr=File.read(filename)
-        Readline::HISTORY.push(*oldstr.split)
-      end
-      # push existing value into history also, so it can be edited
-      Readline::HISTORY.push(default) if default
-      #puts Readline::HISTORY.to_a
-      puts text
+      #require 'readline'
+      #filename = ".#{column}.hist"
+      #oldstr = ""
+      ## if file exists with values push them into history
+      #values = []
+      #if File.exists? filename
+        #oldstr=File.read(filename)
+        ##Readline::HISTORY.push(*oldstr.split)
+        #values.push(*oldstr.split)
+      #end
+      ## push existing value into history also, so it can be edited
+      #values.push(default) if default
+      #values.uniq!
+      #Readline::HISTORY.push(*values)
+      ##puts Readline::HISTORY.to_a
       str = Readline::readline('>', false)
-      if str != oldstr && str != ""
-        # write value to history file, but we should not if it exists
-        File.open(filename, 'a') {|f| f.puts(str) }
-      end
+      Cmdapp::history_save column, str
+      #if str != oldstr && str != ""
+        ## write value to history file, but we should not if it exists
+        #File.open(filename, 'a') {|f| f.puts(str) }
+      #end
       str = default if str.nil? or str == ""
       return str
     else
