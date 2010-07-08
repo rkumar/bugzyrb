@@ -292,6 +292,55 @@ def template_replace template, myhash
   }
   t
 end
+#------------------------------------------------------------
+# these 2 methods deal with with maintaining readline history
+# for various columns. _read reads up any earlier values
+# so user can select from them.
+# _save saves the values for future use.
+#------------------------------------------------------------
+# for a given column, check if there's any previous data
+# in our cache, and put in readlines history so user can 
+# use or edit. Also put default value in history.
+# @param [String] name of column for maintaining cache
+# @param [String] default data for user to recall, or edit
+def history_read column, default=nil
+  values = []
+  oldstr = ""
+  if !defined? $history_hash
+    require 'readline'
+    require 'yaml'
+    filename = File.expand_path "~/.bugzy_history.yml"
+    $history_filename = filename
+    # if file exists with values push them into history
+    if File.exists? filename
+      $history_hash = YAML::load( File.open( filename ) )
+    else
+      $history_hash = Hash.new
+    end
+  end
+  values.push(*$history_hash[column]) if $history_hash.has_key? column
+  # push existing value into history also, so it can be edited
+  values.push(default) if default
+  values.uniq!
+  Readline::HISTORY.push(*values) unless values.empty?
+  #puts Readline::HISTORY.to_a
+end
+## 
+# update our cache with str if not present in cache already
+# @param [String] name of column for maintaining cache
+# @param [String] str : data just entered by user
+#
+def history_save column, str
+  return if str.nil? or str == ""
+  if $history_hash.has_key? column
+    return if $history_hash[column].include? str
+  end
+  ($history_hash[column] ||= []) << str
+  filename = $history_filename
+  File.open( filename, 'w' ) do |f|
+    f << $history_hash.to_yaml
+  end
+end
 
 
 
