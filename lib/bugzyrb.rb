@@ -10,13 +10,13 @@
 =end
 require 'rubygems'
 $:.unshift File.expand_path(File.dirname(__FILE__) + '/../lib')
-require 'common/colorconstants'
-require 'common/sed'
-require 'common/cmdapp'
+require 'bugzyrb/common/colorconstants'
+require 'bugzyrb/common/sed'
+require 'bugzyrb/common/cmdapp'
 require 'subcommand'
 require 'sqlite3'
 require 'highline/import'
-require 'common/db'
+require 'bugzyrb/common/db'
 include ColorConstants
 include Sed
 include Cmdapp
@@ -504,19 +504,7 @@ TEXT
   #   list -- -linux
   def list args
     # lets look at args as search words
-    incl = []
-    excl = []
-    args.each do |e| 
-      if e[0] == '+'
-        incl << e[1..-1]
-      elsif  e[0] == '-'
-        excl << e[1..-1]
-      else
-        incl << e
-      end
-    end
-    incl = nil if incl.empty?
-    excl = nil if excl.empty?
+    incl, excl = Cmdapp._list_args args
     db = get_db
     #db.run "select * from bugs " do |row|
     #end
@@ -547,15 +535,11 @@ TEXT
     rows = db.run "select #{fields} from bugs #{wherestring} "
     die "No rows" unless rows
 
-    if incl
-      incl_str = incl.join "|"
-      r = Regexp.new incl_str
-      rows = rows.select { |row| row['title'] =~ r }
+    rows = Cmdapp.filter_rows( rows, incl) do |row, regexp|
+      row['title'] =~ regexp
     end
-    if excl
-      excl_str = excl.join "|"
-      r = Regexp.new excl_str
-      rows = rows.select { |row| row['title'] !~ r }
+    rows = Cmdapp.filter_rows( rows, excl) do |row, regexp|
+      row['title'] !~ regexp
     end
     headings = fields.split ","
     # if you want to filter output send a delimiter
@@ -861,6 +845,10 @@ TEXT
     return tag, items
   end
 
+  # get choice from user from a list of options
+  # @param [String] prompt text
+  # @param [Array] values to chose from
+  # FIXME: move to Cmdapp
   def _choice prompt, choices
     choose do |menu|
       menu.prompt = prompt
@@ -912,7 +900,7 @@ TEXT
   ## prompts user for multiline input
   # @param [String] text to use as prompt
   # @return [String, nil] string with newlines or nil (if nothing entered).
-  #
+  # FIXME: move to Cmdapp
   def get_lines prompt=nil
     #prompt ||= "Enter multiple lines, to quit enter . on empty line"
     #message prompt
@@ -927,6 +915,9 @@ TEXT
     return nil if str == ""
     return str.chomp
   end
+  # get a string from user, using readline or gets
+  # if readline, then manage column specific history
+  # FIXME: move to Cmdapp.
   def _gets column, prompt, default=nil
     text = "#{prompt}? "
     text << "|#{default}|" if default
