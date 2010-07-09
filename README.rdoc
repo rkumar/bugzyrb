@@ -1,6 +1,6 @@
 = bugzyrb
 
-A command-line bug tracking system using sqlite3 as a store.
+A command-line bug/issue/feature tracking system using sqlite3 as a store.
 This is a port of bugzy.sh (bash-shell based tracker that uses tab delimited files).
 
 This is not an extensive, full-fledged bug or issue tracker such a bugzilla. Its a simple tracker that maintains one sqlite file per directory. Thus, you could create one for each project.
