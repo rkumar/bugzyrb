@@ -23,12 +23,12 @@ include Cmdapp
 include Subcommands
 include Database
 
-PRI_A = YELLOW + BOLD
-PRI_B = WHITE  + BOLD
-PRI_C = GREEN  + BOLD
-PRI_D = CYAN  + BOLD
-VERSION = "0.0.0"
-DATE = "2010-06-24"
+#PRI_A = YELLOW + BOLD
+#PRI_B = WHITE  + BOLD
+#PRI_C = GREEN  + BOLD
+#PRI_D = CYAN  + BOLD
+VERSION = "0.2.0"
+DATE = "2010-07-24"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 
@@ -63,6 +63,7 @@ class Bugzy
   # For more:
   #     $ bugzyrb --help
   #     $ bugzyrb --show-actions
+  #     $ alias bu='bugzyrb'
   #
   # == TODO:
   #
@@ -213,7 +214,6 @@ SQL
     #fix = nil
     body['start_date']  = @now
     body['due_date']    = default_due_date
-    #rowid = db.bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
     rowid = db.table_insert_hash("bugs", body)
     puts "Issue #{rowid} created"
     type = body['type']
@@ -311,7 +311,6 @@ SQL
     body["component"]=component if $use_component
     body["version"]=version if $use_version
 
-    #rowid = db.bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix)
     rowid = db.table_insert_hash("bugs", body)
     puts "Issue #{rowid} created"
     logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
@@ -441,19 +440,29 @@ TEXT
   end
   # deletes given issue
   # @param [Array] id of issue
+  # @example
+  # bu delete 1
+  # bu $0 delete 2 3 4
+  # bu $0 delete $(jot - 6 10)
   def delete args
-    id = args.shift
-    if @options[:force]
-      db, row = validate_id id, false
-      db.sql_delete_bug id
-      exit 0
+    #id = args.shift
+    ctr = 0
+    args.each do |id| 
+      if @options[:force]
+        db, row = validate_id id, false
+        db.sql_delete_bug id
+        ctr += 1
+      else
+        db, row = validate_id id, true
+        if agree("Delete issue #{id}?  ")
+          db.sql_delete_bug id
+          ctr += 1
+        else
+          message "Operation cancelled"
+        end
+      end
     end
-    db, row = validate_id id, true
-    if agree("Delete this issue?  ")
-      db.sql_delete_bug id
-    else
-      message "Operation cancelled"
-    end
+    message "#{ctr} issue/s deleted"
     0
   end
   def copy args
@@ -701,7 +710,11 @@ TEXT
     if respond_to? meth
       #bool = send("validate_#{field}".to_sym, value)
       bool = send(meth, value)
-      die "#{value} is not valid for #{field}" unless bool
+      # try to find out values
+      #vfield = "@valid_#{field}"
+      #valid = eval(vfield).join(",")
+      #die "#{value} is not valid for #{field} (#{valid})" unless bool
+      return 1 unless bool
     end
     args.each do |id| 
       db, row = validate_id id
@@ -716,6 +729,14 @@ TEXT
       end
       _comment(db, id, @options[:comment]) if @options[:comment]
       _fix(db, id, @options[:fix]) if @options[:fix]
+    end
+    0
+  end
+  def status args
+    value = args.shift
+    ret = change_value "status", value, args
+    if ret != 0
+      die "#{value} is not valid for status. Valid are (#{@valid_status.join(',')})" 
     end
     0
   end
@@ -865,6 +886,7 @@ TEXT
   # @return [String, nil] users choice
   #
   # TODO: should we not check for the ask_x methods and call them if present.
+  # FIXME: move to Cmdapp
   def user_input column, prompt_flag, prompt_text=nil, choices=nil, default=nil
     if prompt_flag == true
       prompt_flag = :freeform
@@ -883,11 +905,11 @@ TEXT
     when :multiline, :ml
       return Cmdapp::edit_text default
     when false
-      #return nil
       return default
     end
   end
   def test args=nil
+    puts "This is only for testing things out"
     if $use_project
       project = user_input('project', $prompt_project, nil, $valid_project, $default_project)
       puts project
@@ -898,6 +920,7 @@ TEXT
     end
   end
   ## prompts user for multiline input
+  # NOTE: we do not take Ctrl-d as EOF then causes an error in next input in 1.9 (not 1.8)
   # @param [String] text to use as prompt
   # @return [String, nil] string with newlines or nil (if nothing entered).
   # FIXME: move to Cmdapp
@@ -1160,16 +1183,17 @@ TEXT
     #}
   end
   Subcommands::command :status do |opts|
-    opts.banner = "Usage: status [options] <STATUS> <TASKS>"
-    opts.description = "Change the status of a task. \t<STATUS> are open closed started pending hold next"
-    opts.on("--recursive", "operate on subtasks also") { |v|
-      options[:recursive] = v
-    }
+    opts.banner = "Usage: status [options] <STATUS> <ISSUE>"
+    opts.description = "Change the status of an issue. \t<STATUS> are open closed started canceled stopped "
+    #opts.on("--recursive", "operate on subtasks also") { |v|
+      #options[:recursive] = v
+    #}
   end
-  Subcommands::command :tag do |opts|
-    opts.banner = "Usage: tag <TAG> <TASKS>"
-    opts.description = "Add a tag to an item/s. "
-  end
+  # TODO:
+  #Subcommands::command :tag do |opts|
+    #opts.banner = "Usage: tag <TAG> <TASKS>"
+    #opts.description = "Add a tag to an item/s. "
+  #end
   #Subcommands::alias_command :open , "status","open"
   #Subcommands::alias_command :close , "status","closed"
   cmd = Subcommands::opt_parse()
