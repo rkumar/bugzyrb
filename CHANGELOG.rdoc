@@ -1,3 +1,7 @@
-= bugzyrb 0.2.0,  2010-07-08 1
+= bugzyrb 0.2.1, 2010-07-09
+* added status which was missing
+* delete can take multiple issues
+
+= bugzyrb 0.2.0,  2010-07-08
 * added readline support and history for fields being entered
 * optional project, component, version
