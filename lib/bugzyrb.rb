@@ -1178,16 +1178,10 @@ TEXT
     opts.on("-f", "--[no-]force", "force - don't prompt") do |v|
       options[:force] = v
     end
-    #opts.on("--recursive", "operate on subtasks also") { |v|
-      #options[:recursive] = v
-    #}
   end
   Subcommands::command :status do |opts|
     opts.banner = "Usage: status [options] <STATUS> <ISSUE>"
     opts.description = "Change the status of an issue. \t<STATUS> are open closed started canceled stopped "
-    #opts.on("--recursive", "operate on subtasks also") { |v|
-      #options[:recursive] = v
-    #}
   end
   # TODO:
   #Subcommands::command :tag do |opts|
