@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Rahul Kumar"]
-  s.date = %q{2010-07-08}
+  s.date = %q{2010-07-09}
   s.default_executable = %q{bugzyrb}
   s.description = %q{basic, easy-to-use command-line issue-tracker using sqlite for ruby 1.9}
   s.email = %q{sentinel1879@gmail.com}
@@ -30,10 +30,10 @@ Gem::Specification.new do |s|
      "bugzy.cfg",
      "bugzyrb.gemspec",
      "lib/bugzyrb.rb",
-     "lib/common/cmdapp.rb",
-     "lib/common/colorconstants.rb",
-     "lib/common/db.rb",
-     "lib/common/sed.rb"
+     "lib/bugzyrb/common/cmdapp.rb",
+     "lib/bugzyrb/common/colorconstants.rb",
+     "lib/bugzyrb/common/db.rb",
+     "lib/bugzyrb/common/sed.rb"
   ]
   s.homepage = %q{http://github.com/rkumar/bugzyrb}
   s.rdoc_options = ["--charset=UTF-8"]
