@@ -73,30 +73,6 @@ module Database
       return nil if rows.empty?
       return rows
     end
-  ## 
-  # insert a issue or bug report into the database
-  # @params
-  # @return [Fixnum] last row id
-  def bugs_insert(status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by = $default_user)
-    # id = $num
-    # status = "CODE" 
-    # severity = "CODE" 
-    # type = "CODE" 
-    # assigned_to = "CODE" 
-    # start_date = $now
-    # due_date = $now
-    # comment_count = $num
-    # priority = "CODE" 
-    # title = "CODE" 
-    # description = "Some long text" 
-    # fix = "Some long text" 
-    # date_created = $now
-    # date_modified = $now
-    @db.execute(" insert into bugs (  status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by ) values (  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",  
-                status, severity, type, assigned_to, start_date, due_date, comment_count, priority, title, description, fix, created_by )
-    rowid = @db.get_first_value( "select last_insert_rowid();")
-    return rowid
-  end
   ## takes a hash and creates an insert statement for table and inserts data.
   # Advantage is that as we add columns, this will add the column to the insert, so we
   # don't need to keep modifying in many places.
@@ -123,8 +99,8 @@ module Database
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
-  def max_bug_id
-    id = @db.get_first_value( "select max(id) from bugs;")
+  def max_bug_id table="bugs"
+    id = @db.get_first_value( "select max(id) from #{table};")
     return id
   end
   def sql_comments_insert id, comment, created_by = $default_user
