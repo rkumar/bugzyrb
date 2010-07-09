@@ -142,6 +142,7 @@ module Cmdapp
     require 'fileutils'
     FileUtils.cp filename, "#{filename}.org"
   end
+  # exit after printing an error message
   def die text
     $stderr.puts text
     exit ERRCODE
