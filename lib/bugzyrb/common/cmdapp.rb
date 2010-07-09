@@ -8,7 +8,8 @@
   * License:       Ruby License
 
 =end
-require 'common/sed'
+# sed required by serial number setter only change_file
+require 'bugzyrb/common/sed'
 
 ERRCODE = 1
 
@@ -133,6 +134,7 @@ module Cmdapp
       _get_serial_number
     end
     _backup filename
+    # from Sed
     change_row filename, pattern, "#{appname}:#{number}"
   end
 
@@ -173,8 +175,7 @@ module Cmdapp
     $valid_array = false
     @data = []
     File.open(@app_file_path).each do |line|
-      # FIXME: use @app_delim
-      row = line.chomp.split "\t"
+      row = line.chomp.split( @app_delim ) 
       @data << row
     end
     $valid_array = true
@@ -186,8 +187,8 @@ module Cmdapp
     raise "Cannot save array! Please use load_array to load" if $valid_array == false
 
     File.open(@app_file_path, "w") do |file| 
-      # FIXME: use join with @app_delim
-      @data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
+      #@data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
+      @data.each { |row| file.puts row.join(@app_delim) }
     end
   end
   ##
