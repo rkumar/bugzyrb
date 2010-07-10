@@ -5,7 +5,6 @@
   * Author:        rkumar
   * Date:          2010-06-24
   * License:       Ruby License
-  * Now requires subcommand gem
 
 =end
 require 'rubygems'
@@ -220,7 +219,7 @@ SQL
     title = body['title']
     logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
     body["id"] = rowid
-    mail_issue body
+    mail_issue nil, body
     0
   end
 
@@ -315,17 +314,18 @@ SQL
     puts "Issue #{rowid} created"
     logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
     body["id"] = rowid
-    mail_issue body
+    mail_issue nil, body
     
     0
   end
-  def mail_issue row, emailid=nil
+  def mail_issue subject, row, emailid=nil
     emailid ||= $default_user
     body = <<TEXT
     Id            : #{row['id']} 
     Title         : #{row['title']} 
     Description   : #{row['description']} 
     Type          : #{row['type']} 
+    Status        : #{row['status']} 
     Start Date    : #{row['start_date']} 
     Due Date      : #{row['due_date']} 
     Priority      : #{row['priority']} 
@@ -335,9 +335,9 @@ TEXT
     body << "    Project       : #{row['project']}\n" if $use_project
     body << "    Component     : #{row['component']}\n" if $use_component
     body << "    Version       : #{row['version']}\n" if $use_version
-    title = "#{row['id']}: #{row['title']} "
+    subject ||= "#{row['id']}: #{row['title']} "
 
-    cmd = %{ mail -s "#{title}" "#{emailid}" }
+    cmd = %{ mail -s "#{subject}" "#{emailid}" }
     #puts cmd
     Cmdapp::pipe_output(cmd, body)
   end
@@ -482,7 +482,7 @@ TEXT
 
     logid = db.sql_logs_insert rowid, "create", "#{rowid} #{type}: #{title}"
     newrow["id"] = rowid
-    mail_issue newrow
+    mail_issue nil, newrow
   end
   def viewlogs args
     db = get_db
@@ -636,6 +636,7 @@ TEXT
   end
   # insert comment into database
   # called from interactive, as well as "close" or others
+  # Should we send a mail here ? XXX
   def _comment db, id, text
     rowid = db.sql_comments_insert id, text
     puts "Comment #{rowid} created"
@@ -652,47 +653,26 @@ TEXT
     unless id
       id = ask("Issue Id?  ", Integer)
     end
+    db, row = validate_id id
     if !args.empty?
       text = args.join(" ")
     else
+      # XXX give the choice of using vim
       message "Enter a fix (. to exit): "
       text = get_lines
     end
     die "Operation cancelled" if text.nil? or text.empty?
     message "fix is: #{text}."
-    db, row = validate_id id
     message "Adding fix to #{id}: #{row['title']}"
     _fix db, id, text
     0
   end
+  # internal method that actually updates the fix. can be called
+  # from fix or from close using --fix
+  # Should we send a mail here ? XXX
   def _fix db, id, text
     db.sql_update "bugs", id, "fix", text
     rowid = db.sql_logs_insert id, "fix", text[0..50]
-  end
-  ## internal method to log an action
-  # @param [Fixnum] id
-  # @param [String] column or create/delete for row
-  # @param [String] details such as content added, or content changed
-  def log id, field, text
-    id = args.shift
-    unless id
-      id = ask("Issue Id?  ", Integer)
-    end
-    if !args.empty?
-      comment = args.join(" ")
-    else
-      message "Enter a comment (. to exit): "
-      comment = get_lines
-    end
-    die "Operation cancelled" if comment.nil? or comment.empty?
-    message "Comment is: #{comment}."
-    db = get_db
-    row = db.sql_select_rowid "bugs", id
-    die "No issue found for #{id}" unless row
-    message "Adding comment to #{id}: #{row['title']}"
-    rowid = db.sql_logs_insert id, field, log
-    puts "Comment #{rowid} created"
-    0
   end
 
   ##
@@ -724,6 +704,8 @@ TEXT
         db.sql_update "bugs", id, field, value
         puts "Updated #{id}"
         rowid = db.sql_logs_insert id, field, "[#{id}] updated [#{field}] with #{value}"
+        row[field] = value
+        mail_issue "[#{id}] updated [#{field}] with #{value}", row
       else
         message "#{id} already #{value}"
       end
