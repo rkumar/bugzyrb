@@ -250,7 +250,7 @@ SQL
       # choice of vim or this XXX also how to store in case of error or abandon
       # and allow user to edit, so no retyping. This could be for mult fields
       message "Enter a detailed description (. to exit): "
-      desc = get_lines
+      desc = Cmdapp.get_lines
       #message "You entered #{desc}"
     end
     type = $default_type || "bug"
@@ -258,34 +258,34 @@ SQL
     status = $default_status || "open"
     priority = $default_priority || "P3"
     if $prompt_type
-      type = _choice("Select type:", %w[bug enhancement feature task] )
+      type = Cmdapp._choice("Select type:", %w[bug enhancement feature task] )
       #message "You selected #{type}"
     end
     if $prompt_severity
-      severity = _choice("Select severity:", %w[normal critical moderate] )
+      severity = Cmdapp._choice("Select severity:", %w[normal critical moderate] )
       #message "You selected #{severity}"
     end
     if $prompt_status
-      status = _choice("Select status:", %w[open started closed stopped canceled] )
+      status = Cmdapp._choice("Select status:", %w[open started closed stopped canceled] )
       #message "You selected #{status}"
     end
     assigned_to = $default_assigned_to
     if $prompt_assigned_to
       message "Assign to:"
       #assigned_to = $stdin.gets.chomp
-      assigned_to = _gets "assigned_to", "assigned_to", $default_assigned_to
+      assigned_to = Cmdapp._gets "assigned_to", "assigned_to", $default_assigned_to
       #message "You selected #{assigned_to}"
     end
     project = component = version = nil
     # project
     if $use_project
-      project = user_input('project', $prompt_project, nil, $valid_project, $default_project)
+      project = Cmdapp.user_input('project', $prompt_project, nil, $valid_project, $default_project)
     end
     if $use_component
-      component = user_input('component', $prompt_component, nil, $valid_component, $default_component)
+      component = Cmdapp.user_input('component', $prompt_component, nil, $valid_component, $default_component)
     end
     if $use_version
-      version = user_input('version', $prompt_version, nil, $valid_version, $default_version)
+      version = Cmdapp.user_input('version', $prompt_version, nil, $valid_version, $default_version)
     end
 
     start_date = @now
@@ -414,7 +414,7 @@ TEXT
     editable << "project" if $use_project
     editable << "component" if $use_component
     editable << "version" if $use_version
-    sel = _choice "Select field to edit", editable
+    sel = Cmdapp._choice "Select field to edit", editable
     print "You chose: #{sel}"
     old =  row[sel]
     puts " Current value is: #{old}"
@@ -593,16 +593,16 @@ TEXT
     puts "GOT:: #{args}"
   end
   def ask_type old=nil
-    type = _choice("Select type:", %w[bug enhancement feature task] )
+    type = Cmdapp._choice("Select type:", %w[bug enhancement feature task] )
   end
   def ask_severity old=nil
-    severity = _choice("Select severity:", %w[normal critical moderate] )
+    severity = Cmdapp._choice("Select severity:", %w[normal critical moderate] )
   end
   def ask_status old=nil
-    status = _choice("Select status:", %w[open started closed stopped canceled] )
+    status = Cmdapp._choice("Select status:", %w[open started closed stopped canceled] )
   end
   def ask_priority old=nil
-    priority = _choice("Select priority:", %w[P1 P2 P3 P4 P5] )
+    priority = Cmdapp._choice("Select priority:", %w[P1 P2 P3 P4 P5] )
   end
   def ask_fix old=nil
     Cmdapp::edit_text old
@@ -626,7 +626,7 @@ TEXT
       comment = args.join(" ")
     else
       message "Enter a comment (. to exit): "
-      comment = get_lines
+      comment = Cmdapp.get_lines
     end
     die "Operation cancelled" if comment.nil? or comment.empty?
     message "Comment is: #{comment}."
@@ -650,6 +650,7 @@ TEXT
     rowid = db.sql_logs_insert id, "comment",text[0..50]
   end
   # prompts user for a fix related to an issue
+  # # XXX what if fix already exists, will we overwrite.
   def fix args #id, fix
     id = args.shift
     unless id
@@ -658,11 +659,19 @@ TEXT
     db, row = validate_id id
     if !args.empty?
       text = args.join(" ")
+      if row['fix']
+        die "Sorry. I already have a fix, pls edit ... #{row['fix']}"
+      end
     else
       # XXX give the choice of using vim
-      message "Enter a fix (. to exit): "
-      text = get_lines
+      if row['fix']
+        text = Cmdapp.edit_text row['fix']
+      else
+        message "Enter a fix (. to exit): "
+        text = Cmdapp.get_lines
+      end
     end
+    # FIXME: what if user accidentally enters a fix, and wants to nullify ?
     die "Operation cancelled" if text.nil? or text.empty?
     message "fix is: #{text}."
     message "Adding fix to #{id}: #{row['title']}"
@@ -772,173 +781,16 @@ TEXT
     }
   end
 
-  def check_file filename=@app_file_path
-    File.exists?(filename) or die "#{filename} does not exist in this dir. Use 'add' to create an item first."
-  end
-  ##
-  # colorize each line, if required.
-  # However, we should put the colors in some Map, so it can be changed at configuration level.
-  #
-  def colorize # TODO:
-    colorme = @options[:colorize]
-    @data.each do |r| 
-      if @options[:hide_numbering]
-        string = "#{r[1]} "
-      else
-        string = " #{r[0]} #{r[1]} "
-      end
-      if colorme
-        m=string.match(/\(([A-Z])\)/)
-        if m 
-          case m[1]
-          when "A", "B", "C", "D"
-            pri = self.class.const_get("PRI_#{m[1]}")
-            #string = "#{YELLOW}#{BOLD}#{string}#{CLEAR}"
-            string = "#{pri}#{string}#{CLEAR}"
-          else
-            string = "#{NORMAL}#{GREEN}#{string}#{CLEAR}"
-            #string = "#{BLUE}\e[6m#{string}#{CLEAR}"
-            #string = "#{BLUE}#{string}#{CLEAR}"
-          end 
-        else
-          #string = "#{NORMAL}#{string}#{CLEAR}"
-          # no need to put clear, let it be au natural
-        end
-      end # colorme
-      ## since we've added notes, we convert C-a to newline with spaces
-      # so it prints in next line with some neat indentation.
-      string.gsub!('', "\n        ")
-      #string.tr! '', "\n"
-      puts string
-    end
-  end
-  # internal method for sorting on reverse of line (status, priority)
-  def sort # TODO:
-    fold_subtasks
-    if @options[:reverse]
-      @data.sort! { |a,b| a[1] <=> b[1] }
-    else
-      @data.sort! { |a,b| b[1] <=> a[1] }
-    end
-    unfold_subtasks
-  end
-  def grep # TODO:
-    r = Regexp.new @options[:grep]
-    #@data = @data.grep r
-    @data = @data.find_all {|i| i[1] =~ r }
-  end
 
-  ##
-  # separates args into tag or subcommand and items
-  # This allows user to pass e.g. a priority first and then item list
-  # or item list first and then priority. 
-  # This can only be used if the tag or pri or status is non-numeric and the item is numeric.
-  def _separate args, pattern=nil #/^[a-zA-Z]/ 
-    tag = nil
-    items = []
-    args.each do |arg| 
-      if arg =~ /^[0-9\.]+$/
-        items << arg
-      else
-        tag = arg
-        if pattern
-          die "#{@action}: #{arg} appears invalid." if arg !~ pattern
-        end
-      end
-    end
-    items = nil if items.empty?
-    return tag, items
-  end
-
-  # get choice from user from a list of options
-  # @param [String] prompt text
-  # @param [Array] values to chose from
-  # FIXME: move to Cmdapp
-  def _choice prompt, choices
-    choose do |menu|
-      menu.prompt = prompt
-      menu.choices(*choices) do |n|  return n; end
-    end
-  end
-  #
-  # take user input based on value of flag 
-  # @param [String] column name
-  # @param [Boolean, Symbol] true, false, :freeform, :choice
-  # @param [String, nil] text to prompt
-  # @param [Array, nil] choices array or nil
-  # @param [Object] default value
-  # @return [String, nil] users choice
-  #
-  # TODO: should we not check for the ask_x methods and call them if present.
-  # FIXME: move to Cmdapp
-  def user_input column, prompt_flag, prompt_text=nil, choices=nil, default=nil
-    if prompt_flag == true
-      prompt_flag = :freeform
-      prompt_flag = :choice if choices
-    end
-    case prompt_flag
-    when :freeform
-      prompt_text ||= "#{column.capitalize}"
-      #str = ask(prompt_text){ |q| q.default = default if default  }
-      str = _gets(column, prompt_text, default)
-      return str
-    when :choice
-      prompt_text ||= "Select #{column}:"
-      str = _choice(prompt_text, choices)
-      return str
-    when :multiline, :ml
-      return Cmdapp::edit_text default
-    when false
-      return default
-    end
-  end
   def test args=nil
     puts "This is only for testing things out"
     if $use_project
-      project = user_input('project', $prompt_project, nil, $valid_project, $default_project)
+      project = Cmdapp.user_input('project', $prompt_project, nil, $valid_project, $default_project)
       puts project
     end
     if $use_component
-      component = user_input('component', $prompt_component, nil, $valid_component, $default_component)
+      component = Cmdapp.user_input('component', $prompt_component, nil, $valid_component, $default_component)
       puts component
-    end
-  end
-  ## prompts user for multiline input
-  # NOTE: we do not take Ctrl-d as EOF then causes an error in next input in 1.9 (not 1.8)
-  # @param [String] text to use as prompt
-  # @return [String, nil] string with newlines or nil (if nothing entered).
-  # FIXME: move to Cmdapp
-  def get_lines prompt=nil
-    #prompt ||= "Enter multiple lines, to quit enter . on empty line"
-    #message prompt
-    str = ""
-    while $stdin.gets                        # reads from STDIN
-      if $_.chomp == "."
-        break
-      end
-      str << $_
-      #puts "Read: #{$_}"                   # writes to STDOUT
-    end
-    return nil if str == ""
-    return str.chomp
-  end
-  # get a string from user, using readline or gets
-  # if readline, then manage column specific history
-  # FIXME: move to Cmdapp.
-  def _gets column, prompt, default=nil
-    text = "#{prompt}? "
-    text << "|#{default}|" if default
-    puts text
-    if $use_readline
-      Cmdapp::history_read column, default
-      str = Readline::readline('>', false)
-      Cmdapp::history_save column, str
-      str = default if str.nil? or str == ""
-      return str
-    else
-      str = $stdin.gets.chomp
-      str = default if str.nil? or str == ""
-      return str
     end
   end
   # ADD here
@@ -1095,7 +947,11 @@ TEXT
   end
   Subcommands::command :comment do |opts|
     opts.banner = "Usage: comment [options] ISSUE_NO TEXT"
-    opts.description = "Add comment a given issue"
+    opts.description = "Add a comment to a given issue"
+  end
+  Subcommands::command :fix do |opts|
+    opts.banner = "Usage: fix [options] ISSUE_NO TEXT"
+    opts.description = "Add a fix for a given issue"
   end
   Subcommands::command :test do |opts|
     opts.banner = "Usage: test [options] ISSUE_NO TEXT"
