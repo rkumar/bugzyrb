@@ -247,6 +247,8 @@ SQL
     title = text
     desc = nil
     if $prompt_desc
+      # choice of vim or this XXX also how to store in case of error or abandon
+      # and allow user to edit, so no retyping. This could be for mult fields
       message "Enter a detailed description (. to exit): "
       desc = get_lines
       #message "You entered #{desc}"
