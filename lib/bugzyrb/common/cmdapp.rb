@@ -27,6 +27,8 @@ module Cmdapp
   # @param [Array] rest of args on command line
   # @return [Boolean] whether it is mapped or not.
   #
+  # NOTE: some of these are relevant only if we are not using subcommand, so we should move out
+  # to another file.
   def check_aliases action, args
     return false unless @aliases
     ret = @aliases[action]
@@ -96,10 +98,12 @@ module Cmdapp
     @actions[name.to_s] = desc
   end
 
+  # TODO: move to serial_number.rb or a file that deals with file_data as against sql data
+  # which should also have backup, load_array and save_array.
   ##
   # reads serial_number file, returns serialno for this app
   # and increments the serial number and writes back.
-  def _get_serial_number
+  def get_serial_number
     require 'fileutils'
     appname = @appname
     filename = @app_serial_path || "serial_numbers"
@@ -125,20 +129,23 @@ module Cmdapp
   end
   ##
   # After doing a redo of the numbering, we need to reset the numbers for that app
-  def _set_serial_number number
+  def set_serial_number number
     appname = @appname
     pattern = Regexp.new "^#{appname}:.*$"
     filename = @app_serial_path || "serial_numbers"
     # during testing redo this file does not exist, so i get errors
     if !File.exists? filename
-      _get_serial_number
+      get_serial_number
     end
-    _backup filename
+    backup filename
     # from Sed
     change_row filename, pattern, "#{appname}:#{number}"
   end
 
-  def _backup filename=@app_file_path
+  #
+  # backup file to filename.org
+  # use prior to a modification operation that could be dangerous or risky
+  def backup filename=@app_file_path
     require 'fileutils'
     FileUtils.cp filename, "#{filename}.org"
   end
@@ -195,6 +202,7 @@ module Cmdapp
   ##
   # retrieve version info updated by jeweler.
   # Typically used by --version option of any command.
+  # FIXME: link VERSION to version.rb in lib/buzg.. and read from same dir
   # @return [String, nil] version as string, or nil if file not found
   def version_info
     # thanks to Roger Pack on ruby-forum for how to get to the version
@@ -214,7 +222,7 @@ module Cmdapp
   # and returns as a string.
   # Add newline after each line
   # @return [String, nil] newline delimited string, or nil
-  def get_lines
+  def old_get_lines
     lines = nil
     #$stdin.flush
     $stdin.each_line do |line|
@@ -232,118 +240,118 @@ module Cmdapp
   end
   
 
-# edits given text using EDITOR
-# @param [String] text to edit
-# @return [String, nil] edited string, or nil if no change
-def edit_text text
-  # 2010-06-29 10:24 
-  require 'fileutils'
-  require 'tempfile'
-  ed = ENV['EDITOR'] || "vim"
-  temp = Tempfile.new "tmp"
-  File.open(temp,"w"){ |f| f.write text }
-  mtime =  File.mtime(temp.path)
-  #system("#{ed} #{temp.path}")
-  system(ed, temp.path)
+  # edits given text using EDITOR
+  # @param [String] text to edit
+  # @return [String, nil] edited string, or nil if no change
+  def edit_text text
+    # 2010-06-29 10:24 
+    require 'fileutils'
+    require 'tempfile'
+    ed = ENV['EDITOR'] || "vim"
+    temp = Tempfile.new "tmp"
+    File.open(temp,"w"){ |f| f.write text }
+    mtime =  File.mtime(temp.path)
+    #system("#{ed} #{temp.path}")
+    system(ed, temp.path)
 
-  newmtime = File.mtime(temp.path)
-  newstr = nil
-  if mtime < newmtime
-    # check timestamp, if updated ..
-    #newstr = ""
-    #File.open(temp,"r"){ |f| f.each {|r| newstr << r } }
-    newstr = File.read(temp)
-    #puts "I got: #{newstr}"
-  else
-    #puts "user quit without saving"
-  end
-  return newstr
-end
-
-# pipes given string to command
-# @param [String] command to pipe data to
-# @param [String] data to pipe to command
-# @example
-#     cmd = %{mail -s "my title" rahul}
-#     pipe_output(cmd, "some long text")
-# FIXME: not clear how to return error.
-# NOTE: this is obviously more portable than using system echo or system cat.
-def pipe_output (pipeto, str)
-  #pipeto = '/usr/sbin/sendmail -t'
-  #pipeto = %q{mail -s "my title" rahul}
-  if pipeto != nil  # i was taking pipeto from a hash, so checking
-    proc = IO.popen(pipeto, "w+")
-    proc.puts str
-    proc.close_write
-    #puts proc.gets
-  end
-end
-##
-# reads up template, and substirutes values from myhash
-# @param [String] template text
-# @param [Hash] values to replace in template
-# @return [String] template output
-# NOTE: probably better to use rdoc/template which can handle arrays as well.
-def template_replace template, myhash
-  #tmpltext=File::read(template);
-
-  t = template.dup
-  t.gsub!( /##(.*?)##/ ) {
-    #raise "Key '#{$1}' found in template but the value has not been set" unless ( myhash.has_key?( $1 ) )
-    myhash[ $1 ].to_s
-  }
-  t
-end
-#------------------------------------------------------------
-# these 2 methods deal with with maintaining readline history
-# for various columns. _read reads up any earlier values
-# so user can select from them.
-# _save saves the values for future use.
-#------------------------------------------------------------
-# for a given column, check if there's any previous data
-# in our cache, and put in readlines history so user can 
-# use or edit. Also put default value in history.
-# @param [String] name of column for maintaining cache
-# @param [String] default data for user to recall, or edit
-def history_read column, default=nil
-  values = []
-  oldstr = ""
-  if !defined? $history_hash
-    require 'readline'
-    require 'yaml'
-    filename = File.expand_path "~/.bugzy_history.yml"
-    $history_filename = filename
-    # if file exists with values push them into history
-    if File.exists? filename
-      $history_hash = YAML::load( File.open( filename ) )
+    newmtime = File.mtime(temp.path)
+    newstr = nil
+    if mtime < newmtime
+      # check timestamp, if updated ..
+      #newstr = ""
+      #File.open(temp,"r"){ |f| f.each {|r| newstr << r } }
+      newstr = File.read(temp)
+      #puts "I got: #{newstr}"
     else
-      $history_hash = Hash.new
+      #puts "user quit without saving"
+    end
+    return newstr
+  end
+
+  # pipes given string to command
+  # @param [String] command to pipe data to
+  # @param [String] data to pipe to command
+  # @example
+  #     cmd = %{mail -s "my title" rahul}
+  #     pipe_output(cmd, "some long text")
+  # FIXME: not clear how to return error.
+  # NOTE: this is obviously more portable than using system echo or system cat.
+  def pipe_output (pipeto, str)
+    #pipeto = '/usr/sbin/sendmail -t'
+    #pipeto = %q{mail -s "my title" rahul}
+    if pipeto != nil  # i was taking pipeto from a hash, so checking
+      proc = IO.popen(pipeto, "w+")
+      proc.puts str
+      proc.close_write
+      #puts proc.gets
     end
   end
-  values.push(*$history_hash[column]) if $history_hash.has_key? column
-  # push existing value into history also, so it can be edited
-  values.push(default) if default
-  values.uniq!
-  Readline::HISTORY.clear # else previous values of other fields also come in
-  Readline::HISTORY.push(*values) unless values.empty?
-  #puts Readline::HISTORY.to_a
-end
-## 
-# update our cache with str if not present in cache already
-# @param [String] name of column for maintaining cache
-# @param [String] str : data just entered by user
-#
-def history_save column, str
-  return if str.nil? or str == ""
-  if $history_hash.has_key? column
-    return if $history_hash[column].include? str
+  ##
+  # reads up template, and substirutes values from myhash
+  # @param [String] template text
+  # @param [Hash] values to replace in template
+  # @return [String] template output
+  # NOTE: probably better to use rdoc/template which can handle arrays as well.
+  def template_replace template, myhash
+    #tmpltext=File::read(template);
+
+    t = template.dup
+    t.gsub!( /##(.*?)##/ ) {
+      #raise "Key '#{$1}' found in template but the value has not been set" unless ( myhash.has_key?( $1 ) )
+      myhash[ $1 ].to_s
+    }
+    t
   end
-  ($history_hash[column] ||= []) << str
-  filename = $history_filename
-  File.open( filename, 'w' ) do |f|
-    f << $history_hash.to_yaml
+  #------------------------------------------------------------
+  # these 2 methods deal with with maintaining readline history
+  # for various columns. _read reads up any earlier values
+  # so user can select from them.
+  # _save saves the values for future use.
+  #------------------------------------------------------------
+  # for a given column, check if there's any previous data
+  # in our cache, and put in readlines history so user can 
+  # use or edit. Also put default value in history.
+  # @param [String] name of column for maintaining cache
+  # @param [String] default data for user to recall, or edit
+  def history_read column, default=nil
+    values = []
+    oldstr = ""
+    if !defined? $history_hash
+      require 'readline'
+      require 'yaml'
+      filename = File.expand_path "~/.bugzy_history.yml"
+      $history_filename = filename
+      # if file exists with values push them into history
+      if File.exists? filename
+        $history_hash = YAML::load( File.open( filename ) )
+      else
+        $history_hash = Hash.new
+      end
+    end
+    values.push(*$history_hash[column]) if $history_hash.has_key? column
+    # push existing value into history also, so it can be edited
+    values.push(default) if default
+    values.uniq!
+    Readline::HISTORY.clear # else previous values of other fields also come in
+    Readline::HISTORY.push(*values) unless values.empty?
+    #puts Readline::HISTORY.to_a
   end
-end
+  ## 
+  # update our cache with str if not present in cache already
+  # @param [String] name of column for maintaining cache
+  # @param [String] str : data just entered by user
+  #
+  def history_save column, str
+    return if str.nil? or str == ""
+    if $history_hash.has_key? column
+      return if $history_hash[column].include? str
+    end
+    ($history_hash[column] ||= []) << str
+    filename = $history_filename
+    File.open( filename, 'w' ) do |f|
+      f << $history_hash.to_yaml
+    end
+  end
   # separates args to list-like operations
   # +xxx means xxx should match in output
   # -xxx means xxx should not exist in output
@@ -378,7 +386,127 @@ end
     end
     rows
   end
+  # ----------- file operations -------------
+  #
+  def file_read filename
+    filename = File.expand_path filename
+    return File.read(filename)
+    #if File.exists? filename
+  end
+  def file_write filename, text
+    filename = File.expand_path filename
+    File.open(filename,"w"){ |f| f.write text }
+    #if File.exists? filename
+  end
+  def file_append filename, text
+    filename = File.expand_path filename
+    File.open(temp,"a"){ |f| f.write text }
+  end
+  def check_file filename=@app_file_path
+    File.exists?(filename) or die "#{filename} does not exist in this dir. "
+  end
 
+  ##
+  # separates args into tag or subcommand and items
+  # This allows user to pass e.g. a priority first and then item list
+  # or item list first and then priority. 
+  # This can only be used if the tag or pri or status is non-numeric and the item is numeric.
+  def _separate args, pattern=nil #/^[a-zA-Z]/ 
+    tag = nil
+    items = []
+    args.each do |arg| 
+      if arg =~ /^[0-9\.]+$/
+        items << arg
+      else
+        tag = arg
+        if pattern
+          die "#{@action}: #{arg} appears invalid." if arg !~ pattern
+        end
+      end
+    end
+    items = nil if items.empty?
+    return tag, items
+  end
+
+  ## prompts user for multiline input
+  # NOTE: we do not take Ctrl-d as EOF then causes an error in next input in 1.9 (not 1.8)
+  # @param [String] text to use as prompt
+  # @return [String, nil] string with newlines or nil (if nothing entered).
+  # FIXME: move to Cmdapp
+  def get_lines prompt=nil
+    #prompt ||= "Enter multiple lines, to quit enter . on empty line"
+    #message prompt
+    str = ""
+    while $stdin.gets                        # reads from STDIN
+      if $_.chomp == "."
+        break
+      end
+      str << $_
+      #puts "Read: #{$_}"                   # writes to STDOUT
+    end
+    return nil if str == ""
+    return str.chomp
+  end
+  # get a string from user, using readline or gets
+  # if readline, then manage column specific history
+  # FIXME: move to Cmdapp.
+  def _gets column, prompt, default=nil
+    text = "#{prompt}? "
+    text << "|#{default}|" if default
+    puts text
+    if $use_readline
+      Cmdapp::history_read column, default
+      str = Readline::readline('>', false)
+      Cmdapp::history_save column, str
+      str = default if str.nil? or str == ""
+      return str
+    else
+      str = $stdin.gets.chomp
+      str = default if str.nil? or str == ""
+      return str
+    end
+  end
+  # get choice from user from a list of options
+  # @param [String] prompt text
+  # @param [Array] values to chose from
+  def _choice prompt, choices
+    choose do |menu|
+      menu.prompt = prompt
+      menu.choices(*choices) do |n|  return n; end
+    end
+  end
+  #
+  # take user input based on value of flag 
+  # @param [String] column name
+  # @param [Boolean, Symbol] true, false, :freeform, :choice
+  # @param [String, nil] text to prompt
+  # @param [Array, nil] choices array or nil
+  # @param [Object] default value
+  # @return [String, nil] users choice
+  #
+  # TODO: should we not check for the ask_x methods and call them if present.
+  # FIXME: move to Cmdapp
+  def user_input column, prompt_flag, prompt_text=nil, choices=nil, default=nil
+    if prompt_flag == true
+      prompt_flag = :freeform
+      prompt_flag = :choice if choices
+    end
+    case prompt_flag
+    when :freeform
+      prompt_text ||= "#{column.capitalize}"
+      #str = ask(prompt_text){ |q| q.default = default if default  }
+      str = _gets(column, prompt_text, default)
+      return str
+    when :choice
+      prompt_text ||= "Select #{column}:"
+      str = _choice(prompt_text, choices)
+      return str
+    when :multiline, :ml
+      return Cmdapp::edit_text default
+    when false
+      return default
+    end
+  end
 
 
 end
