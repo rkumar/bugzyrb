@@ -354,32 +354,40 @@ TEXT
     db, row = validate_id id
     die "No data found for #{id}" unless row
     puts "[#{row['type']} \##{row['id']}] #{row['title']}"
-    puts row['description']
-    puts 
+    puts "Description:"
+    puts Cmdapp.indent(row['description'],3)
+    puts "\nAdded by #{row['created_by']} on #{row['date_created']}. Updated #{row['date_modified']}."
     comment_count = 0
     #puts row
     row.each_pair { |name, val| 
       next if name == "project" && !$use_project
       next if name == "version" && !$use_version
       next if name == "component" && !$use_component
+      next if %w{ id title description created_by date_created date_modified }.include? name
       comment_count = val.to_i if name == "comment_count"
+      val = Cmdapp.indent2(val, 18) if name == "fix"
       n = sprintf("%-15s", name); 
       puts "#{n} : #{val}" 
     }
     puts
     if comment_count > 0
       puts "Comments   :"
+      ctr = 0
       db.select_where "comments", "id", id do |r|
-        #puts r.join(" | ")
-        puts "(#{r['date_created']}) [ #{r['created_by']} ] #{r['comment']}"
-        #pp r
+        #puts "(#{r['date_created']}) [ #{r['created_by']} ] #{r['comment']}"
+        ctr += 1
+        puts "------- (#{r['date_created']}) #{r['created_by']} (#{ctr})------"
+        puts r['comment']
       end
+      puts
     end
     puts "Log:"
+      ctr = 0
     db.select_where "log", "id", id do |r|
-      #puts r.join(" | ")
-      puts "------- (#{r['date_created']}) ------"
-      puts "#{r['field']} [ #{r['created_by']} ] #{r['log']} "
+      ctr += 1
+      #puts "------- (#{r['date_created']}) #{r['created_by']}  ------"
+      puts "------- #{r['date_created']} - #{r['created_by']} (#{ctr})------"
+      puts " * [#{r['field']}]:  #{r['log']} "
       #pp r
     end
   end
@@ -436,8 +444,8 @@ TEXT
     message str
     db.sql_update "bugs", id, sel, str
     puts "Updated #{id}"
-    str = str.to_s
-    rowid = db.sql_logs_insert id, sel, "[#{id}] updated [#{sel}] with #{str[0..50]}"
+    sstr = Cmdapp.truncate(str.to_s,50)
+    rowid = db.sql_logs_insert id, sel, "[#{id}] updated [#{sel}] with #{sstr}"
     0
   end
   # deletes given issue
@@ -624,6 +632,8 @@ TEXT
     unless id
       id = ask("Issue Id?  ", Integer)
     end
+    db, row = validate_id id, true
+    die "No issue found for #{id}" unless row
     if !args.empty?
       comment = args.join(" ")
     else
@@ -632,8 +642,6 @@ TEXT
     end
     die "Operation cancelled" if comment.nil? or comment.empty?
     message "Comment is: #{comment}."
-    db, row = validate_id id
-    die "No issue found for #{id}" unless row
     message "Adding comment to #{id}: #{row['title']}"
     _comment db, id, comment
     0
@@ -649,7 +657,7 @@ TEXT
     commcount = handle.get_first_value( "select count(id) from comments where id = #{id};" )
     commcount = commcount.to_i
     db.sql_update "bugs", id, "comment_count", commcount
-    rowid = db.sql_logs_insert id, "comment",text[0..50]
+    rowid = db.sql_logs_insert id, "comment", Cmdapp.truncate(text, 50)
   end
   # prompts user for a fix related to an issue
   # # XXX what if fix already exists, will we overwrite.
@@ -685,7 +693,7 @@ TEXT
   # Should we send a mail here ? XXX
   def _fix db, id, text
     db.sql_update "bugs", id, "fix", text
-    rowid = db.sql_logs_insert id, "fix", text[0..50]
+    rowid = db.sql_logs_insert id, "fix", Cmdapp.truncate(text, 50)
   end
 
   ##
