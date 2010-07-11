@@ -258,14 +258,13 @@ module Cmdapp
     newstr = nil
     if mtime < newmtime
       # check timestamp, if updated ..
-      #newstr = ""
-      #File.open(temp,"r"){ |f| f.each {|r| newstr << r } }
       newstr = File.read(temp)
-      #puts "I got: #{newstr}"
     else
       #puts "user quit without saving"
+      return nil
     end
-    return newstr
+    return newstr.chomp if newstr
+    return nil
   end
 
   # pipes given string to command
@@ -438,8 +437,11 @@ module Cmdapp
     #message prompt
     str = ""
     while $stdin.gets                        # reads from STDIN
-      if $_.chomp == "."
+      case $_.chomp 
+      when "."
         break
+      when ".vim"
+        return edit_text str
       end
       str << $_
       #puts "Read: #{$_}"                   # writes to STDOUT
@@ -526,6 +528,14 @@ module Cmdapp
     #(char * count) + gsub(/(\n+)/) { $1 + (char * count) }
     str.gsub(/(\n+)/) { $1 + (char * count) }
   end
+  # for updating in log file
+  # truncates long strings comments, descriptions, fix etc and removed newlines
+  def truncate string, count
+    string = string.to_s
+    string.tr!("\n",' ')
+    return string if string.length <= count
+    (string[0..(count-4)] + " ...")
+  end
 
-
+ # ADD
 end
