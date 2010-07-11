@@ -486,7 +486,9 @@ TEXT
     newrow["id"] = rowid
     mail_issue nil, newrow
   end
-  def viewlogs args
+  # view logs for a given id, or highest issue
+  # @param [Array] issue id
+  def viewlogs args=nil
     db = get_db
     id = args[0].nil? ? db.max_bug_id : args[0]
     row = db.sql_select_rowid "bugs", id
@@ -793,6 +795,52 @@ TEXT
       puts component
     end
   end
+  #
+  # prints recent log/activity
+  # @param [Array] first index is limit (how many rows to show), default 10
+  def recentlogs args=nil
+    limit = args[0] || 10
+    sql = "select log.id, title, log.created_by, log.date_created, log from log,bugs where bugs.id = log.id  order by log.date_created desc limit #{limit}"
+
+    db = get_db
+    db.run sql do |row|
+      log = Cmdapp.indent2( row['log'],20)
+      text = <<-TEXT
+
+       id         : [#{row['id']}] #{row['title']} 
+       action_by  : #{row['created_by']} 
+       date       : #{row['date_created']} 
+       activity   : #{log} 
+
+      TEXT
+      #puts row.keys
+      puts text
+
+    end
+  end
+  #
+  # prints recent comments
+  # @param [Array] first index is limit (how many rows to show), default 10
+  def recentcomments args=nil
+    limit = args[0] || 10
+    sql = "select comments.id, title, comments.created_by, comments.date_created, comment from comments,bugs where bugs.id = comments.id  order by comments.date_created desc limit #{limit}"
+
+    db = get_db
+    db.run sql do |row|
+      comment = Cmdapp.indent2( row['comment'],20)
+      text = <<-TEXT
+
+       id         : [#{row['id']}] #{row['title']} 
+       author     : #{row['created_by']} 
+       date       : #{row['date_created']} 
+       comment    : #{comment} 
+
+      TEXT
+      #puts row.keys
+      puts text
+
+    end
+  end
   # ADD here
 
   def self.main args
@@ -983,6 +1031,14 @@ TEXT
   Subcommands::command :viewlogs do |opts|
     opts.banner = "Usage: viewlogs [options] ISSUE_NO"
     opts.description = "view logs for an issue"
+  end
+  Subcommands::command :recentlogs do |opts|
+    opts.banner = "Usage: recentlogs [options] <HOWMANY>"
+    opts.description = "view recent logs/activity, default last 10 logs "
+  end
+  Subcommands::command :recentcomments do |opts|
+    opts.banner = "Usage: recentcomments [options] <HOWMANY>"
+    opts.description = "view recent comments, default last 10 logs "
   end
   # XXX order of these 2 matters !! reverse and see what happens
   Subcommands::command :close, :clo do |opts|
