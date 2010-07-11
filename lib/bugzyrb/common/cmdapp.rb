@@ -507,6 +507,25 @@ module Cmdapp
       return default
     end
   end
+  # indents given string, n spaces
+  # http://redmine.ruby-lang.org/issues/show/749 Thomas Sawyer
+  def indent(str,n)
+    if n >= 0
+      str.gsub(/^/, ' ' * n)
+    else
+      str.gsub(/^ {0,#{-n}}/, "")
+    end
+  end
+  # indents a string, indenting all but first line.
+  # This allows us to print a string as follows:
+  #        Description :  The description starts here.
+  #                       And continues here. The first line was not indented.
+  # http://www.ralfebert.de/blog/ruby/string_helpers/ Ralf Ebert
+  def indent2(str, count)
+    char = ' '
+    #(char * count) + gsub(/(\n+)/) { $1 + (char * count) }
+    str.gsub(/(\n+)/) { $1 + (char * count) }
+  end
 
 
 end
