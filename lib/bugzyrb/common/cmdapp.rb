@@ -524,9 +524,11 @@ module Cmdapp
   #                       And continues here. The first line was not indented.
   # http://www.ralfebert.de/blog/ruby/string_helpers/ Ralf Ebert
   def indent2(str, count)
-    char = ' '
-    #(char * count) + gsub(/(\n+)/) { $1 + (char * count) }
-    str.gsub(/(\n+)/) { $1 + (char * count) }
+    if str
+      char = ' '
+      #(char * count) + gsub(/(\n+)/) { $1 + (char * count) }
+      str.gsub(/(\n+)/) { $1 + (char * count) }
+    end
   end
   # for updating in log file
   # truncates long strings comments, descriptions, fix etc and removed newlines
