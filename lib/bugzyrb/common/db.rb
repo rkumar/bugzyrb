@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby -w
-#require 'rubygems'
+require 'rubygems'
 require 'sqlite3'
 require 'pp'
 require 'arrayfields'
