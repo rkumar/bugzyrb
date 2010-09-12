@@ -76,4 +76,8 @@ module ColorConstants
   # Set the terminal's background ANSI color to white.
   ON_WHITE   = "\e[47m"
 
+  def printred text
+    puts "#{RED} #{text} #{CLEAR} "
+  end
+
 end
