@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby -w
-require 'rubygems'
+#require 'rubygems'
 require 'sqlite3'
 require 'pp'
 require 'arrayfields'
@@ -95,7 +95,8 @@ module Database
     str << qstr.join(",")
     str << ")"
     #puts str
-    @db.execute(str, *bind_vars)
+    # 2010-09-12 11:42 removed splat due to change in sqlite3 1.3.x
+    @db.execute(str, bind_vars)
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
@@ -105,16 +106,19 @@ module Database
   end
   def sql_comments_insert id, comment, created_by = $default_user
     #date_created = date_cr | Time.now
-    @db.execute("insert into comments (id, comment, created_by) values (?,?,?)", id, comment, created_by ) 
+    # 2010-09-12 11:42 added [ ]     due to change in sqlite3 1.3.x
+    @db.execute("insert into comments (id, comment, created_by) values (?,?,?)", [id, comment, created_by] ) 
     rowid = @db.get_first_value( "select last_insert_rowid();")
     return rowid
   end
   def sql_logs_insert id, field, log, created_by = $default_user
     #date_created = date_cr | Time.now
-    @db.execute("insert into log (id, field, log, created_by) values (?,?,?,?)", id, field, log, created_by ) 
+    # 2010-09-12 11:42 added [ ]     due to change in sqlite3 1.3.x
+    @db.execute("insert into log (id, field, log, created_by) values (?,?,?,?)", [id, field, log, created_by] ) 
   end
   def sql_delete_bug id
-    message "deleting #{id}"
+    #message  "deleting #{id}"
+    puts  "deleting #{id}"
     @db.execute( "delete from bugs where id = ?", id )
     @db.execute( "delete from comments where id = ?", id )
     @db.execute( "delete from log where id = ?", id )
@@ -128,7 +132,8 @@ module Database
     # @param [String] value to update
     # @example sql_update "bugs", 9, :name, "Roger"
     def sql_update table, id, field, value
-      @db.execute( "update #{table} set #{field} = ?, date_modified = ? where id = ?", value,$now, id)
+      # 2010-09-12 11:42 added to_s to now, due to change in sqlite3 1.3.x
+      @db.execute( "update #{table} set #{field} = ?, date_modified = ? where id = ?", [value,$now.to_s, id])
     end
 
     # update a row from bugs based on id, can give multiple fieldnames and values
@@ -139,7 +144,7 @@ module Database
       fields = []
       values = []
       fv << "date_modified"
-      fv << $now
+      fv << $now.to_s
       fv.each_with_index do |f, i| 
         if i % 2 == 0
           fields << "#{f} = ?"
@@ -149,7 +154,7 @@ module Database
       end
 
       print( "update bugs set #{fields.join(" ,")} where id = ?", *values, id)
-      @db.execute( "update bugs set #{fields.join(" ,")} where id = ?", *values, id)
+      @db.execute( "update bugs set #{fields.join(" ,")} where id = ?", [*values, id])
     end
     # 
     # return a single row from table based on rowid
@@ -201,25 +206,42 @@ if __FILE__ == $PROGRAM_NAME
   include Database
   # some tests. change bugs with real name
   db = DB.new
-  db.dummy
+  #db.dummy
   puts  "\n------------ all row -----\n"
   #db.select "bugs" do |r|
     #puts r
     ##puts r.join(" | ")
   #end
   res = db.select "bugs" 
+  count = 0
   if res
     puts "count: #{res.count}"
     #puts res.public_methods
     res.each do |e| 
       puts e.join(" | ")
+      count += 1
+      break if count ==3
     end
   end
+  puts "#{count} rows retrieved"
+  puts
+  puts "--- sql_update"
   db.sql_update "bugs", 1, "fix", "A fix added at #{$now}"
+  puts
+  puts "--- sql_bugs_update_mult "
   db.sql_bugs_update_mult 1, "title", "a new title #{$num}", "description", "a new description #{$num}"
   puts  "\n------------ one row -----\n "
-  db.select_where "bugs", "id", 1 do |r|
+  db.select_where "bugs", "id", 77 do |r|
     puts r.join(" | ")
   end
+  id = 77
+  comment = "adding a comment at #{$now}"
+  puts "--- sql_comments_insert "
+  db.sql_comments_insert id, comment, created_by = $default_user
+  field =  "fix" ; log="modified fix"
+  puts "--- sql_logs_insert "
+  db.sql_logs_insert id, field, log, created_by = $default_user
+  puts "--- sql_delete_bug "
+  db.sql_delete_bug 76
 
 end # if
