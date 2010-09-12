@@ -399,7 +399,7 @@ module Cmdapp
   end
   def file_append filename, text
     filename = File.expand_path filename
-    File.open(temp,"a"){ |f| f.write text }
+    File.open(filename,"a"){ |f| f.write text }
   end
   def check_file filename=@app_file_path
     File.exists?(filename) or die "#{filename} does not exist in this dir. "
@@ -434,7 +434,7 @@ module Cmdapp
   # FIXME: move to Cmdapp
   def get_lines prompt=nil
     #prompt ||= "Enter multiple lines, to quit enter . on empty line"
-    #message prompt
+    message prompt if prompt
     str = ""
     while $stdin.gets                        # reads from STDIN
       case $_.chomp 
