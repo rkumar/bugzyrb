@@ -2,7 +2,7 @@
 require 'rubygems'
 require 'sqlite3'
 require 'pp'
-require 'arrayfields'
+#require 'arrayfields' # removed 2011-09-21 
 module Database
   class DB
     attr_accessor :db
@@ -33,11 +33,14 @@ module Database
       return rows
     end
     # returns many rows 
+    # 2011-09-21 Please specify results_as_hash or typr_translation before calling
+    # as it crashes in some cases and works in others.
     # @param [String] sql statement
     # @return [Array, nil] array if rows, else nil
     def run text
       #puts " --- #{text} ---  "
-      @db.type_translation = true
+      #@db.type_translation = true # here it works, if i remove then long date is shown
+      #@db.results_as_hash = true # 2011-09-21 
       rows = []
       @db.execute( text ) do |row|
         if block_given?
@@ -51,7 +54,7 @@ module Database
     end
     def select_where table, *wherecond
       #puts " --- #{table} --- #{wherecond} "
-      @db.type_translation = true
+      #@db.type_translation = true # causing errors in sqlite3 columns() not found for Array
       wherestr = nil
       rows = []
       if wherecond and !wherecond.empty?
@@ -61,7 +64,7 @@ module Database
         if wherestr
           #puts " wherestr #{wherestr}, #{values} "
           #stmt = @db.prepare("select * from #{table} #{wherestr} ", *values)
-          @db.execute( "select * from #{table} #{wherestr}", *values  ) do |row|
+          @db.execute( "select * from #{table} #{wherestr}", *values  ) do |row| 
             if block_given?
               yield row
             else
@@ -162,7 +165,7 @@ module Database
     # @param [Fixnum] rowid
     # @return [Array] resultset (based on arrayfield)
     def sql_select_rowid table, id
-      # @db.results_as_hash = true
+      @db.results_as_hash = true # 2011-09-21 
       return nil if id.nil? or table.nil?
       row = @db.get_first_row( "select * from #{table} where rowid = ?", id )
       return row
