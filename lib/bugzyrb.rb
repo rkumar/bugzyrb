@@ -360,6 +360,8 @@ TEXT
     comment_count = 0
     #puts row
     row.each_pair { |name, val| 
+      x = (name =~ /[A-Za-z]/)
+      next unless x # 2011-09-21 skip names that are just numbers
       next if name == "project" && !$use_project
       next if name == "version" && !$use_version
       next if name == "component" && !$use_component
@@ -383,13 +385,13 @@ TEXT
     end
     puts "Log:"
       ctr = 0
-    db.select_where "log", "id", id do |r|
-      ctr += 1
-      #puts "------- (#{r['date_created']}) #{r['created_by']}  ------"
-      puts "------- #{r['date_created']} - #{r['created_by']} (#{ctr})------"
-      puts " * [#{r['field']}]:  #{r['log']} "
+      db.select_where "log", "id", id do |r|
+          ctr += 1
+          #puts "------- (#{r['date_created']}) #{r['created_by']}  ------"
+          puts "------- #{r['date_created']} - #{r['created_by']} (#{ctr})------"
+          puts " * [#{r['field']}]:  #{r['log']} "
+      end
       #pp r
-    end
   end
   ## tried out a version of view that uses template replacement
   # but can't do placement of second column -- it does not come aligned, so forget
@@ -553,7 +555,10 @@ TEXT
     end
     puts wherestring
 
+    db.db.type_translation = true
+    db.db.results_as_hash = false # 2011-09-21 
     rows = db.run "select #{fields} from bugs #{wherestring} "
+    db.db.type_translation = false
     die "No rows" unless rows
 
     rows = Cmdapp.filter_rows( rows, incl) do |row, regexp|
@@ -811,6 +816,7 @@ TEXT
     sql = "select log.id, title, log.created_by, log.date_created, log from log,bugs where bugs.id = log.id  order by log.date_created desc limit #{limit}"
 
     db = get_db
+    db.db.results_as_hash = true # 2011-09-21 
     db.run sql do |row|
       log = Cmdapp.indent2( row['log'],20)
       text = <<-TEXT
@@ -834,6 +840,7 @@ TEXT
     sql = "select comments.id, title, comments.created_by, comments.date_created, comment from comments,bugs where bugs.id = comments.id  order by comments.date_created desc limit #{limit}"
 
     db = get_db
+    db.db.results_as_hash = true # 2011-09-21 
     db.run sql do |row|
       comment = Cmdapp.indent2( row['comment'],20)
       text = <<-TEXT
