@@ -7,6 +7,8 @@ This is not an extensive, full-fledged bug or issue tracker such a bugzilla. Its
 
 Maintains priority, severity, status, fix, comments.  All updates are logged.
 
+A change in Sqlite3 not supporting arrayfields resulted in everything crashing. I've now fixed that -- finally.
+
 == Purpose
 
 There are already other command-line bug trackers, some ruby some not. I've had problems installing many. As far as ruby ones, some do not work on 1.9 and this bug has not been rectified for over a year. Others rely on gems that are broken and the maintainer has abandoned them.
