@@ -531,11 +531,13 @@ TEXT
     db = get_db
     #db.run "select * from bugs " do |row|
     #end
+    descindex = nil
     fields = "id,status,title,severity,priority,start_date,due_date"
     if @options[:short]
       fields = "id,status,title"
     elsif @options[:long]
       fields = "id,status,title,severity,priority,due_date,description"
+      descindex = 6
     end
     where = nil
     wherestring = ""
@@ -562,10 +564,12 @@ TEXT
     die "No rows" unless rows
 
     rows = Cmdapp.filter_rows( rows, incl) do |row, regexp|
-      row['title'] =~ regexp
+      #row['title'] =~ regexp
+      row[2] =~ regexp
     end
     rows = Cmdapp.filter_rows( rows, excl) do |row, regexp|
-      row['title'] !~ regexp
+      #row['title'] !~ regexp
+      row[2] !~ regexp
     end
     headings = fields.split ","
     # if you want to filter output send a delimiter
@@ -573,11 +577,18 @@ TEXT
       delim = @options[:delimiter] || "\t" 
       puts headings.join delim
       rows.each do |e| 
-        d = e['description'] 
-        e['description'] = d.gsub(/\n/," ") if d
+#        d = e['description']  # changed 2011 dts  
+        if descindex
+          d = e[descindex] 
+          e[descindex] = d.gsub(/\n/," ") if d
+        end
         puts e.join delim
       end
     else
+      if rows.size == 0
+        puts "No rows"
+        return
+      end
       # pretty output tabular format etc
       require 'terminal-table/import'
       #table = table(nil, *rows)
