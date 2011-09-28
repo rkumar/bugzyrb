@@ -82,8 +82,8 @@ class Bugzy
     @app_default_action = "list" # TODO:
     @file = @app_file_path = @options[:file] || "bugzy.sqlite"
     #@app_serial_path = File.expand_path("~/serial_numbers")
-    @deleted_path = "todo_deleted.txt"
-    @todo_delim = "\t"
+    #@deleted_path = "todo_deleted.txt"
+    #@todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
     # in order to support the testing framework
     t = Time.now
@@ -187,7 +187,17 @@ SQL
 
       0
   end
+  # get a connection to the database, checking up 3 levels.
   def get_db
+    # we want to check a couple levels 2011-09-28 
+    unless @db
+      unless File.exists? @file
+        3.times do |i|
+          @file = "../#{@file}"
+          break if File.exists? @file
+        end
+      end
+    end
     @db ||= DB.new @file
   end
   # returns default due date for add or qadd
@@ -534,7 +544,7 @@ TEXT
     #db.run "select * from bugs " do |row|
     #end
     descindex = nil
-    fields = "id,status,title,severity,priority,start_date,due_date"
+    fields = "id,status,title,severity,priority,start_date"
     if @options[:short]
       fields = "id,status,title"
     elsif @options[:long]
