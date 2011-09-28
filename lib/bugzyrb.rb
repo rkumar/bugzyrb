@@ -26,13 +26,13 @@ include Database
 #PRI_B = WHITE  + BOLD
 #PRI_C = GREEN  + BOLD
 #PRI_D = CYAN  + BOLD
-VERSION = "0.2.0"
-DATE = "2010-07-24"
+VERSION = "0.3.4"
+DATE = "2011-09-28"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 
 class Bugzy
-  # This class is responsible for all todo task related functionality.
+  # This class is responsible for all bug task related functionality.
   #
   # == Create a file
   #
@@ -65,6 +65,8 @@ class Bugzy
   #     $ alias bu='bugzyrb'
   #
   # == TODO:
+  #  colorize output
+  #  archive completed tasks
   #
   def initialize options, argv
  
@@ -541,6 +543,10 @@ TEXT
     end
     where = nil
     wherestring = ""
+    if @options[:open]
+      where ||= []
+      where <<  %{ status != 'closed'} 
+    end
     if @options[:overdue]
       #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
       where ||= []
@@ -551,6 +557,11 @@ TEXT
       #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
       where ||= []
       where <<  %{ (assigned_to = 'unassigned' or assigned_to is null) } 
+    end
+    # added 2011-09-28 so we don't see closed all the time.
+    if !where && !@options[:show_all]
+      where ||= []
+      where <<  %{ status != 'closed'} 
     end
     if where
       wherestring = " where " + where.join(" and ")
@@ -895,7 +906,7 @@ TEXT
 
   Subcommands::global_options do |opts|
     opts.banner = "Usage: #{APPNAME} [options] [subcommand [options]]"
-    opts.description = "Todo list manager"
+    opts.description = "Bug list manager"
     #opts.separator ""
     #opts.separator "Global options are:"
     opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
@@ -1047,8 +1058,14 @@ TEXT
       options[:bare] = v
       $bare = true
     }
-    opts.on("-o","--overdue", "not closed, due date past") { |v|
+    opts.on("-v","--overdue", "not closed, due date past") { |v|
       options[:overdue] = v
+    }
+    opts.on("-p","--open", "not closed") { |v|
+      options[:open] = v
+    }
+    opts.on("-a","--show-all", "all items including closed") { |v|
+      options[:show_all] = v
     }
     opts.on("-u","--unassigned", "not assigned") { |v|
       options[:unassigned] = v
