@@ -1,3 +1,9 @@
+= bugzyrb 0.3.4, 2011-09-28 
+* default list will not show closed
+* --show-all to show closed
+* --open -o to show open
+* removed due date from default listing so can remain on one line
+
 = bugzyrb 0.3.0, 2010-07-11 
 * added recentlogs
 * added recentcomments
