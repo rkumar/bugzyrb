@@ -33,12 +33,13 @@ module ColorConstants
   BLINK      = "\e[5m"
   # The start of an ANSI reverse sequence.
   REVERSE    = "\e[7m"
+  STANDOUT   = REVERSE
   # The start of an ANSI concealed sequence.  (Terminal support uncommon.)
   CONCEALED  = "\e[8m"
 
   # added from http://understudy.net/custom.html
   BOLD_OFF       = "\e[22m"
-  UNDERILNE_OFF  = "\e[24m"
+  UNDERLINE_OFF  = "\e[24m"
   BLINK_OFF      = "\e[25m"
   REVERSE_OFF    = "\e[27m"
 
