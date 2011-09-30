@@ -22,6 +22,25 @@ include Cmdapp
 include Subcommands
 include Database
 
+# monkey_patch for terminal_table using coloring, does *not* work perfectly here
+# https://gist.github.com/625808
+ELIMINATE_ANSI_ESCAPE = true
+class String
+  alias_method :to_s_orig, :to_s
+  def to_s
+    str = self.to_s_orig
+    if ::ELIMINATE_ANSI_ESCAPE
+      str = str.sub(/^\e\[[\[\e0-9;m]+m/, "")
+      str = str.sub(/(\e\[[\[\e0-9;m]+m)$/, "")
+      # Above works for only one, beg or eol
+      str = str.gsub(/\e\[[\[\e0-9;m]+m/, "")
+      #str = str.gsub(/(\e\[[\[\e0-9;m]+m)/, "")
+    end
+    str
+  end
+end
+# end monkey
+#
 #PRI_A = YELLOW + BOLD
 #PRI_B = WHITE  + BOLD
 #PRI_C = GREEN  + BOLD
@@ -251,6 +270,10 @@ SQL
         exit ERRCODE
       end
     else
+      # if you add last arg as P1..P5, I'll update priority automatically
+      if args.last =~ /P[1-5]/
+        $default_priority = args.pop
+      end
       text = args.join " "
     end
     # convert actual newline to C-a. slash n's are escapes so echo -e does not muck up.
@@ -436,6 +459,8 @@ TEXT
     editable << "project" if $use_project
     editable << "component" if $use_component
     editable << "version" if $use_version
+    print_green row['title']
+    print_green row['description']
     sel = Cmdapp._choice "Select field to edit", editable
     print "You chose: #{sel}"
     old =  row[sel]
@@ -543,14 +568,25 @@ TEXT
     db = get_db
     #db.run "select * from bugs " do |row|
     #end
-    descindex = nil
-    fields = "id,status,title,severity,priority,start_date"
+    # will not be able to find title due to function
+    descdelim = '>>'
+    #fields = 'id,status,type,priority,substr(title || "  >>" ||  ifnull(description,""),0,85)'
+    fields = %Q[id,status,type,priority,substr(title || "  #{descdelim}" ||  ifnull(description,""),0,85)]
+    format = "%-3s | %-7s | %-5s | %-60s "
     if @options[:short]
       fields = "id,status,title"
+      format = "%3s | %6s | %60s "
     elsif @options[:long]
-      fields = "id,status,title,severity,priority,due_date,description"
-      descindex = 6
+      fields = "id,status,priority,title,description"
+      format = "%-3s|%-7s|%-5s | %-60s |%-s"
     end
+    fieldsarr = fields.split(",") # NOTE comma in ifnull function
+    descindex = fieldsarr.index("description")
+    titleindex = fieldsarr.index("title")  || 4 # fieldsarr.count-1 due to comman in ifnull XXX NOTE
+    statindex =  fieldsarr.index("status")
+    priindex =  fieldsarr.index("priority")
+    typeindex =  fieldsarr.index("type")
+
     where = nil
     wherestring = ""
     if @options[:open]
@@ -576,11 +612,12 @@ TEXT
     if where
       wherestring = " where " + where.join(" and ")
     end
+    orderstring ||= " order by status asc, priority desc " # 2011-09-30  so highest prio comes at end
     puts wherestring
 
     db.db.type_translation = true
     db.db.results_as_hash = false # 2011-09-21 
-    rows = db.run "select #{fields} from bugs #{wherestring} "
+    rows = db.run "select #{fields} from bugs #{wherestring} #{orderstring}  "
     db.db.type_translation = false
     die "No rows" unless rows
 
@@ -592,6 +629,10 @@ TEXT
       #row['title'] !~ regexp
       row[2] !~ regexp
     end
+    fields.sub!( /priority/, "pri")
+    fields.sub!( /status/, "sta")
+    fields.sub!( /severity/, "sev")
+    fields.sub!( /substr.*/, "title") # XXX depends on function used on title
     headings = fields.split ","
     # if you want to filter output send a delimiter
     if $bare
@@ -601,8 +642,9 @@ TEXT
 #        d = e['description']  # changed 2011 dts  
         if descindex
           d = e[descindex] 
-          e[descindex] = d.gsub(/\n/," ") if d
+          e[descindex].gsub!(/\n/," ") if d
         end
+        #e[statindex] = e[statindex][0,2] if statindex
         puts e.join delim
       end
     else
@@ -610,13 +652,66 @@ TEXT
         puts "No rows"
         return
       end
+      # NOTE: terminal table gets the widths wrong because of coloring info.
+      if @options[:colored]
+        #require 'colored'
+        startrow = nil
+        fr = titleindex
+        rows.each_with_index do |e, index|  
+          s = e[titleindex] 
+          s.gsub!("\n", ";")
+          s.gsub!(/(#\w+)/,"#{UNDERLINE}\\1#{UNDERLINE_OFF}")
+          s.gsub!(/(>>.*)/,"#{GREEN}\\1#{CLEAR}")
+          st = e[statindex]
+          e[statindex] = e[statindex][0,2]
+          e[typeindex] = e[typeindex][0,3] if typeindex
+          if typeindex
+            case e[typeindex]
+            when 'bug'
+              e[typeindex] = "#{RED}#{e[typeindex]}#{CLEAR}"
+            when 'enh'
+              e[typeindex] = "#{WHITE}#{e[typeindex]}#{CLEAR}"
+            else
+              e[typeindex] = "#{CYAN}#{e[typeindex]}#{CLEAR}"
+            end
+          end
+          frv = e[fr]
+          if st == 'started'
+            startrow = index unless startrow
+            e[fr] = "#{STANDOUT}#{frv}" # changed 2011 dts   whole line green
+            #e[0] = e[0].to_s.red
+
+            e[-1] = "#{e[-1]}#{CLEAR}"
+          else
+            if priindex
+              pri = e[priindex]
+              case pri
+              when "P4", "P5"
+                e[fr] = "#{BLUE}#{frv}"
+                e[-1] = "#{e[-1]}#{CLEAR}"
+              when "P1"
+                e[fr] = "#{YELLOW}#{ON_RED}#{frv}"
+                e[-1] = "#{e[-1]}#{CLEAR}"
+              when "P2"
+                e[fr] = "#{BOLD}#{frv}"
+                e[-1] = "#{e[-1]}#{CLEAR}"
+              else
+            #e[fr] = "#{CLEAR}#{frv}"
+              end
+            end
+          end
+
+          #print "#{format}\n" % e
+        end
+        rows.insert(startrow, :separator) if startrow
+        #return
+      end
       # pretty output tabular format etc
       require 'terminal-table/import'
-      #table = table(nil, *rows)
       table = table(headings, *rows)
       puts table
+      end
     end
-  end
   ## validate user entered id
   # All methods should call this first.
   # @param [Fixnum] id (actually can be String) to validate
@@ -793,6 +888,14 @@ TEXT
   # @return [0] for success
   def start args
     change_value "status", "started", args
+    0
+  end
+  def priority args
+    value = args.shift
+    ret = change_value "priority", value, args
+    if ret != 0
+      die "#{value} is not valid for priority. Valid are (#{@valid_priority.join(',')})" 
+    end
     0
   end
 
@@ -1068,6 +1171,9 @@ TEXT
       options[:bare] = v
       $bare = true
     }
+    opts.on("-c","--colored", "colored listing") { |v|
+      options[:colored] = v
+    }
     opts.on("-v","--overdue", "not closed, due date past") { |v|
       options[:overdue] = v
     }
@@ -1092,6 +1198,10 @@ TEXT
   Subcommands::command :recentcomments do |opts|
     opts.banner = "Usage: recentcomments [options] <HOWMANY>"
     opts.description = "view recent comments, default last 10 logs "
+  end
+  Subcommands::command :priority, :pri do |opts|
+    opts.banner = "Usage: priority [options] <ISSUENO>"
+    opts.description = "change priority of given items to [option]"
   end
   # XXX order of these 2 matters !! reverse and see what happens
   Subcommands::command :close, :clo do |opts|
