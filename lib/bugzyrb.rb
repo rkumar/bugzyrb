@@ -644,7 +644,8 @@ TEXT
           d = e[descindex] 
           e[descindex].gsub!(/\n/," ") if d
         end
-        #e[statindex] = e[statindex][0,2] if statindex
+        e[typeindex] = e[typeindex][0,3] if typeindex
+        e[statindex] = e[statindex][0,2] if statindex
         puts e.join delim
       end
     else
