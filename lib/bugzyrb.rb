@@ -41,12 +41,8 @@ class String
 end
 # end monkey
 #
-#PRI_A = YELLOW + BOLD
-#PRI_B = WHITE  + BOLD
-#PRI_C = GREEN  + BOLD
-#PRI_D = CYAN  + BOLD
-VERSION = "0.3.4"
-DATE = "2011-09-28"
+VERSION = "0.3.5"
+DATE = "2011-09-30"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 
@@ -73,10 +69,10 @@ class Bugzy
   #     $ bugzyrb -d ~/
   #
   # == Close a task (mark as done)
-  #     $ bugzyrb status close 1
+  #     $ bugzyrb close 1
   # 
-  # == Add priority
-  #     $ bugzyrb pri A 2
+  # == Change priority of items 4 and 6 to P2
+  #     $ bugzyrb pri P2 4 6
   #
   # For more:
   #     $ bugzyrb --help
@@ -84,8 +80,10 @@ class Bugzy
   #     $ alias bu='bugzyrb'
   #
   # == TODO:
-  #  colorize output
-  #  archive completed tasks
+  #  -- archive completed tasks
+  #  -- i cannot do any coloring with fields i have not selected. I need to get around this
+  #   of having fields in select that are not displayed. Such as type/priority/date
+  #  -- refactor and cleanup, its a mess. Should be able to configure coloring elsewhere.
   #
   def initialize options, argv
  
@@ -1001,7 +999,7 @@ TEXT
       require 'optparse'
       options = {}
       options[:verbose] = false
-      options[:colorize] = true
+      options[:colored] = true
       $bare = false
       # adding some env variable pickups, so you don't have to keep passing.
       showall = ENV["TODO_SHOW_ALL"]
@@ -1010,7 +1008,7 @@ TEXT
       end
       plain = ENV["TODO_PLAIN"]
       if plain
-        options[:colorize] = (plain == "0") ? false:true
+        options[:colored] = (plain == "0") ? false:true
       end
       config = File.expand_path "~/.bugzyrb.cfg"
       if File.exists? config
