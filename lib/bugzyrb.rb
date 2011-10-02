@@ -600,7 +600,7 @@ TEXT
     if @options[:overdue]
       #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
       where ||= []
-      where <<  %{ status != 'closed'} 
+      where <<  %{ status != 'closed' and status != 'canceled'} 
       where <<  %{ due_date <= "#{Date.today}" }
     end
     if @options[:unassigned]
@@ -611,13 +611,13 @@ TEXT
     # added 2011-09-28 so we don't see closed all the time.
     if !where && !@options[:show_all]
       where ||= []
-      where <<  %{ status != 'closed'} 
+      where <<  %{ status != 'closed' and status != 'canceled'} 
     end
     if where
       wherestring = " where " + where.join(" and ")
     end
     orderstring ||= " order by status asc, priority desc " # 2011-09-30  so highest prio comes at end
-    puts wherestring
+    puts wherestring if options[:verbose]
 
     db.db.type_translation = true
     db.db.results_as_hash = false # 2011-09-21 
