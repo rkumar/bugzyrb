@@ -879,6 +879,13 @@ TEXT
   # @return [0] for success
   def close args
     change_value "status", "closed", args
+    args.each do |id| 
+      db, row = validate_id id
+      curr_status = row['priority']
+      value = curr_status.sub(/P/,'X')
+      db.sql_update "bugs", id, field, value
+      puts "Updated #{id}'s PRI from #{curr_status} to #{value} "
+    end
     0
   end
 
