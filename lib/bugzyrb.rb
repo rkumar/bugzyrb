@@ -481,6 +481,12 @@ TEXT
     message str
     db.sql_update "bugs", id, sel, str
     puts "Updated #{id}"
+    if sel == 'status' && ['canceled', 'closed'].include?(str)
+      curr_status = row['priority']
+      value = curr_status.sub(/P/,'X')
+      db.sql_update "bugs", id, 'priority', value
+      puts "Updated #{id}'s PRI from #{str} to #{value} "
+    end
     sstr = Cmdapp.truncate(str.to_s,50)
     rowid = db.sql_logs_insert id, sel, "[#{id}] updated [#{sel}] with #{sstr}"
     0
@@ -883,7 +889,7 @@ TEXT
       db, row = validate_id id
       curr_status = row['priority']
       value = curr_status.sub(/P/,'X')
-      db.sql_update "bugs", id, field, value
+      db.sql_update "bugs", id, 'priority', value
       puts "Updated #{id}'s PRI from #{curr_status} to #{value} "
     end
     0
