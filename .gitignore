@@ -23,4 +23,19 @@ serial_number*
 *.db
 
 
-## PROJECT::SPECIFIC
+Makefile
+TODO2.txt.org
+dummy.rb
+foobar.rb
+index.html
+lib/t.t
+lib/test.rb
+oldtest/
+readl.rb
+schema.txt
+schema1.txt
+showbugs.sh
+t.t
+test.rb
+testaf.rb
+testy.rb
