@@ -512,6 +512,7 @@ module Cmdapp
   # indents given string, n spaces
   # http://redmine.ruby-lang.org/issues/show/749 Thomas Sawyer
   def indent(str,n)
+    return '' unless str
     if n >= 0
       str.gsub(/^/, ' ' * n)
     else
