@@ -1,0 +1,89 @@
+
+Subject: version and others
+---------------------------
+Date: 2010-07-03 11:36
+
+Wondering if we shoud add fields such as:
+
+* version (of software)
+* environment
+* estimated time
+* actual time
+
+Version can be put as a tag. Can add estimate time, though.
+
+* * * * * * * *
+
+Subject: project and component
+------------------------------
+Date: 2010-07-03 11:40
+
+Should we keep project and component as a tag or as a separate field
+altogether ?
+
+I am assuming each file is for a project, so its not a global database.
+Thus component can be thought of. However, if someone chooses just one
+database, then we need to make it easy to work at project level.
+Perhaps, env variable.
+
+* * * * * * * *
+
+Subject: project component version
+----------------------------------
+Date: 2010-07-06 20:14
+
+set $use_project in cfg file
+same for $component or version.
+If true, then I will prompt for it in "add" operation.
+
+valid_xx allows me to validate.
+default_xx is default value used if no prompt 
+prompt_xx is if user to be prompted
+  - :freeform : allow any entry, if blank, use default
+  - :false : don't prompt, use default if present
+  - :choice : use valid_xx array to give choice to user
+  - true : uses choice if valid_xx prsent else freeform
+
+user_input() takes care of deciding what to do.
+
+* * * * * * * *
+
+Subject: start date
+-------------------
+Date: 2010-07-07 19:55
+
+currently start date goes as current time.
+
+It's meant to be when you expect to start. (Later it can be updated with
+actual start date.) Thus at bug creation, it should not really be
+filled. Should we leave it blank and not put a default ?
+
+* * * * * * * *
+
+Subject: readline for old values
+--------------------------------
+Date: 2010-07-08 00:22
+
+i am using readline for some input, so i can show earlier entered values
+for that column. I am saving that to a file.
+Should i put that in database ?
+File one, will be usable in other cases, too, but currently it relies on
+current directory, and could clutter up disk. I use one file per column.
+I could use yaml and a hash.
+
+I am only using in cases of freeform where i don't have a list, such as
+version, project, component.
+
+* * * * * * * *
+
+Subject: New version of Sqlite3
+-------------------------------
+Date: 2011-09-21 19:50
+
+Due to sqlite3 no longer supporting arrayfields, almost everything had
+begun crashing. I've fixed things here. Still sometimes results_as_hash
+or db_translation gives an error saying columns() not supported by Array
+in its own code. So i am having to set these values in each command
+individually. Its dirty.
+
+* * * * * * * *
