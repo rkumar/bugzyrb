@@ -388,7 +388,7 @@ TEXT
     die "No data found for #{id}" unless row
     puts "[#{row['type']} \##{row['id']}] #{row['title']}"
     puts "Description:"
-    puts Cmdapp.indent(row['description'],3)
+    puts Cmdapp.indent(row['description'],3) if row['description']
     puts "\nAdded by #{row['created_by']} on #{row['date_created']}. Updated #{row['date_modified']}."
     comment_count = 0
     #puts row
@@ -458,7 +458,7 @@ TEXT
     editable << "component" if $use_component
     editable << "version" if $use_version
     print_green row['title']
-    print_green row['description']
+    print_green row['description'] if row['description']
     sel = Cmdapp._choice "Select field to edit", editable
     print "You chose: #{sel}"
     old =  row[sel]
@@ -545,7 +545,7 @@ TEXT
     row = db.sql_select_rowid "bugs", id
     die "No data found for #{id}" unless row
     puts "[#{row['type']} \##{row['id']}] #{row['title']}"
-    puts row['description']
+    puts row['description'] if row['description']
     puts 
     ctr = 0
     db.select_where "log", "id", id do |r|
@@ -617,7 +617,7 @@ TEXT
       wherestring = " where " + where.join(" and ")
     end
     orderstring ||= " order by status asc, priority desc " # 2011-09-30  so highest prio comes at end
-    puts wherestring if options[:verbose]
+    puts wherestring if @options[:verbose]
 
     db.db.type_translation = true
     db.db.results_as_hash = false # 2011-09-21 
@@ -627,11 +627,11 @@ TEXT
 
     rows = Cmdapp.filter_rows( rows, incl) do |row, regexp|
       #row['title'] =~ regexp
-      row[2] =~ regexp
+      row[titleindex] =~ regexp
     end
     rows = Cmdapp.filter_rows( rows, excl) do |row, regexp|
       #row['title'] !~ regexp
-      row[2] !~ regexp
+      row[titleindex] !~ regexp
     end
     fields.sub!( /priority/, "pri")
     fields.sub!( /status/, "sta")
@@ -731,7 +731,7 @@ TEXT
     die "No data found for #{id}" unless row
     if print_header
       puts "[#{row['type']} \##{row['id']}] #{row['title']}"
-      puts row['description']
+      puts row['description'] if row['description']
       puts 
     end
     return db, row
