@@ -12,6 +12,7 @@ $:.unshift File.expand_path(File.dirname(__FILE__) + '/../lib')
 require 'bugzyrb/common/colorconstants'
 require 'bugzyrb/common/sed'
 require 'bugzyrb/common/cmdapp'
+require 'bugzyrb/version'
 require 'subcommand'
 require 'sqlite3'
 require 'highline/import'
@@ -41,7 +42,7 @@ class String
 end
 # end monkey
 #
-VERSION = "0.3.5"
+VERSION = Bugzyrb::Version::STRING
 DATE = "2011-09-30"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
@@ -59,7 +60,7 @@ class Bugzy
   #     $ bugzyrb add "Create a project in rubyforge"
   #     $ bugzyrb add "Update Rakefile with project name"
   #
-  # == List tasks
+  # ==  tasks
   # To list open/unstarted tasks:
   #     $ bugzyrb 
   # To list closed tasks also:
@@ -114,7 +115,7 @@ class Bugzy
     @valid_severity = %w[normal critical moderate] 
     @valid_status = %w[open started closed stopped canceled] 
     @valid_priority = %w[P1 P2 P3 P4 P5] 
-    $prompt_desc = $prompt_type = $prompt_status = $prompt_severity = $prompt_assigned_to = true
+    $prompt_desc = $prompt_type = $prompt_status = $prompt_severity = $prompt_assigned_to = $prompt_priority = true
     $default_priority = nil
     $default_type = "bug"
     $default_severity = "normal"
@@ -157,8 +158,8 @@ class Bugzy
         start_date DATE default CURRENT_DATE,
         due_date DATE,
         comment_count INTEGER default 0,
-        priority VARCHAR(10),
-        title VARCHAR(10) NOT NULL,
+        priority VARCHAR(2),
+        title VARCHAR(20) NOT NULL,
         description TEXT,
         fix TEXT,
         created_by VARCHAR(60),
@@ -294,6 +295,11 @@ SQL
       type = Cmdapp._choice("Select type:", %w[bug enhancement feature task] )
       #message "You selected #{type}"
     end
+    if $prompt_priority
+      #priority = Cmdapp._choice("Select priority:", %w[normal critical moderate] )
+      priority = ask_priority
+      #message "You selected #{severity}"
+    end
     if $prompt_severity
       severity = Cmdapp._choice("Select severity:", %w[normal critical moderate] )
       #message "You selected #{severity}"
@@ -354,6 +360,7 @@ SQL
     0
   end
   def mail_issue subject, row, emailid=nil
+    return unless $send_email
     emailid ||= $default_user
     body = <<TEXT
     Id            : #{row['id']} 
@@ -1061,9 +1068,14 @@ TEXT
       puts Subcommands::print_actions
       exit 0
     end
+    opts.on("--list-actions", "list actions for autocompletion ") do |v|
+      Subcommands::list_actions
+      exit 0
+    end
 
     opts.on("--version", "Show version") do
-      version = Cmdapp::version_info || VERSION
+      version = VERSION
+      #version = Cmdapp::version_info || VERSION
       puts "#{APPNAME} version #{version}, #{DATE}"
       puts "by #{AUTHOR}. This software is under the GPL License."
       exit 0
