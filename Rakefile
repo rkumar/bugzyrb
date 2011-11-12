@@ -1,6 +1,5 @@
 require 'rubygems'
 require 'rake'
-require 'bugzyrb/version'
 
 begin
   require 'jeweler'
