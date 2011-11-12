@@ -3,16 +3,13 @@
 # Instead, edit Jeweler::Tasks in Rakefile, and run 'rake gemspec'
 # -*- encoding: utf-8 -*-
 
-$LOAD_PATH.unshift File.expand_path("../lib", __FILE__)
-require 'bugzyrb/version'
-
 Gem::Specification.new do |s|
   s.name = %q{bugzyrb}
-  s.version = Bugzyrb::Version::STRING
+  s.version = "0.3.8"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = [%q{Rahul Kumar}]
-  s.date = %q{2011-10-06}
+  s.date = %q{2011-11-12}
   s.description = %q{basic, easy-to-use command-line issue-tracker using sqlite for ruby 1.9}
   s.email = %q{sentinel1879@gmail.com}
   s.executables = [%q{bugzyrb}]
@@ -27,6 +24,7 @@ Gem::Specification.new do |s|
     "NOTES",
     "README.rdoc",
     "Rakefile",
+    "VERSION",
     "bin/bugzyrb",
     "bugzy.cfg",
     "bugzyrb.gemspec",
@@ -34,7 +32,8 @@ Gem::Specification.new do |s|
     "lib/bugzyrb/common/cmdapp.rb",
     "lib/bugzyrb/common/colorconstants.rb",
     "lib/bugzyrb/common/db.rb",
-    "lib/bugzyrb/common/sed.rb"
+    "lib/bugzyrb/common/sed.rb",
+    "lib/bugzyrb/version.rb"
   ]
   s.homepage = %q{http://github.com/rkumar/bugzyrb}
   s.require_paths = [%q{lib}]
