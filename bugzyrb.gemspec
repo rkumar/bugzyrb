@@ -3,6 +3,9 @@
 # Instead, edit Jeweler::Tasks in Rakefile, and run 'rake gemspec'
 # -*- encoding: utf-8 -*-
 
+$LOAD_PATH.unshift File.expand_path("../lib", __FILE__)
+require 'bugzyrb/version'
+
 Gem::Specification.new do |s|
   s.name = %q{bugzyrb}
   s.version = Bugzyrb::Version::STRING
