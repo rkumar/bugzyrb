@@ -16,7 +16,7 @@ begin
     gem.add_dependency "subcommand", ">= 1.0.5"
     gem.add_dependency "highline", ">= 1.5.2"
     gem.add_dependency "terminal-table", ">= 1.4.2"
-    gem.add_dependency "sqlite3-ruby", ">= 1.2.5"
+    gem.add_dependency "sqlite3", ">= 1.2.5"
 #    gem.add_dependency "arrayfields", ">= 4.7.4"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
