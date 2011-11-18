@@ -207,7 +207,7 @@ module Cmdapp
   def version_info
     # thanks to Roger Pack on ruby-forum for how to get to the version
     # file
-    filename = File.open(File.dirname(__FILE__) + "/../../VERSION")
+    filename = File.open(File.dirname(__FILE__) + "/../../../VERSION")
     v = nil
     if File.exists?(filename)
       v = File.open(filename).read.chomp if File.exists?(filename)
