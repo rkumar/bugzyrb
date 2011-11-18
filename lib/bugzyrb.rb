@@ -1074,8 +1074,7 @@ TEXT
     end
 
     opts.on("--version", "Show version") do
-      version = VERSION
-      #version = Cmdapp::version_info || VERSION
+      version = Cmdapp::version_info || VERSION
       puts "#{APPNAME} version #{version}, #{DATE}"
       puts "by #{AUTHOR}. This software is under the GPL License."
       exit 0
