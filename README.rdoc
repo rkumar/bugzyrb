@@ -1,7 +1,7 @@
 = bugzyrb
 
 A command-line bug/issue/feature tracking system using sqlite3 as a store.
-This is a port of bugzy.sh (bash-shell based tracker that uses tab delimited files).
+This is a port of bugzy.txt (bash-shell based tracker that uses tab delimited files).
 
 This is not an extensive, full-fledged bug or issue tracker such a bugzilla. Its a simple tracker that maintains one sqlite file per directory. Thus, you could create one for each project.
 
@@ -13,31 +13,43 @@ A change in Sqlite3 not supporting arrayfields resulted in everything crashing. 
 
 There are already other command-line bug trackers, some ruby some not. I've had problems installing many. As far as ruby ones, some do not work on 1.9 and this bug has not been rectified for over a year. Others rely on gems that are broken and the maintainer has abandoned them.
 
-So finally, for personal needs I wrote bugzy.sh. However, that's bash shell based, and relies on GNU's coreutils being installed with default_names options. I wish to get out of the mess of bash commands having different options across BSD and GNU ( I use a Mac, and use GNU coreutils ).
+So finally, for personal needs I wrote bugzy.sh (bugzy.txt). However, that's bash shell based, and relies on GNU's coreutils being installed with default_names options. I wish to get out of the mess of bash commands having different options across BSD and GNU ( I use a Mac, and use GNU coreutils ).
 So I am rewriting this simple issue tracker in ruby with sqlite3. The advantage over having data in a SQL database is that the user can query it easily. With having data in separate Yaml files, searching filtering etc is a big pain.
 
 == Features
 
-* "Easier than baking cookies"
-* "Leather Pants"
-* other features to come
+* Saves bugs with priority (P1-P5), description, comments, fix and other data
+* Various statuses: started/open/closed/canceled
+* Various reports
 
+== Changes
+0.4.0 has a backward-incompatible change.
+
+"priority" took priority code first then item numbers. all other commands take item numbers first and then other information. So now priority also takes item numbers first. 
+
+Earlier you would do:
+
+    bu priority P5 3 4 5
+
+Now you would do:
+
+    bu priority 3 4 5 P5
 
 == Installation
 sqlite3 itself has to be installed 
 
-    sudo port install sqlite3
+    brew install sqlite3
 
 TODO
 Depends on :
 * subcommand (tiny wrapper over optionparser for subcommands)
-* sqlite3-ruby
+* sqlite3
 * highline - for accepting some input
 * terminal-table - for formatting output (this is optional)
   if you use list --bare, then you don't need this gem
 
 Install [Gemcutter](http://gemcutter.org) and execute:
-    $ sudo gem install bugzyrb
+    $ gem install bugzyrb
 
 == Example
 TODO
@@ -73,10 +85,16 @@ view:  view given issue (or last entered)
 
 
 == Known Issues
-TODO
 
-* Doesn't make coffee (not yet)
-* Occassionally burns toast
+For some reason, this loads slowly (I am on OSX Lion, ruby 1.9.3 and
+1.9.especially), 2 the first time. My other program, bugzy.txt (also on github)
+lists out bugs instantly. Seems to be a gem load issue. 
+I use this program for bugs, and bugzy.txt for features.
+
+I've also written a couple of shell-scripts for reporting from the sql tables, these 
+scripts print reports instantly.
+https://gist.github.com/1437194
+https://gist.github.com/1437244
 
 == Database 
 
