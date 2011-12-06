@@ -25,7 +25,9 @@ include Database
 
 # monkey_patch for terminal_table using coloring, does *not* work perfectly here
 # https://gist.github.com/625808
-ELIMINATE_ANSI_ESCAPE = true
+# for 1.9.3 setting this to true was causing it to eat up first 'm' in task
+# and show no colors at all.
+ELIMINATE_ANSI_ESCAPE = false
 class String
   alias_method :to_s_orig, :to_s
   def to_s
@@ -43,7 +45,7 @@ end
 # end monkey
 #
 VERSION = Bugzyrb::Version::STRING
-DATE = "2011-09-30"
+DATE = "2011-12-06"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 
@@ -73,7 +75,7 @@ class Bugzy
   #     $ bugzyrb close 1
   # 
   # == Change priority of items 4 and 6 to P2
-  #     $ bugzyrb pri P2 4 6
+  #     $ bugzyrb pri 4 6 P2
   #
   # For more:
   #     $ bugzyrb --help
@@ -909,8 +911,11 @@ TEXT
     change_value "status", "started", args
     0
   end
+  # I am changing this to keep it consistent with others.
+  # Items numbers always shoud come first, and then other tags/data
   def priority args
-    value = args.shift
+    #value = args.shift
+    value = args.pop
     ret = change_value "priority", value, args
     if ret != 0
       die "#{value} is not valid for priority. Valid are (#{@valid_priority.join(',')})" 
