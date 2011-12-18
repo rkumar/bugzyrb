@@ -48,20 +48,17 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<yard>, [">= 0.5"])
       s.add_runtime_dependency(%q<subcommand>, [">= 1.0.5"])
       s.add_runtime_dependency(%q<highline>, [">= 1.5.2"])
-      s.add_runtime_dependency(%q<terminal-table>, [">= 1.4.2"])
       s.add_runtime_dependency(%q<sqlite3>, [">= 1.2.5"])
     else
       s.add_dependency(%q<yard>, [">= 0.5"])
       s.add_dependency(%q<subcommand>, [">= 1.0.5"])
       s.add_dependency(%q<highline>, [">= 1.5.2"])
-      s.add_dependency(%q<terminal-table>, [">= 1.4.2"])
       s.add_dependency(%q<sqlite3>, [">= 1.2.5"])
     end
   else
     s.add_dependency(%q<yard>, [">= 0.5"])
     s.add_dependency(%q<subcommand>, [">= 1.0.5"])
     s.add_dependency(%q<highline>, [">= 1.5.2"])
-    s.add_dependency(%q<terminal-table>, [">= 1.4.2"])
     s.add_dependency(%q<sqlite3>, [">= 1.2.5"])
   end
 end
