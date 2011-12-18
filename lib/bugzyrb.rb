@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby 
+#
 =begin
   * Name:          bugzyrb.rb
   * Description:   a command line bug tracker uses sqlite3 (port of bugzy.sh)
@@ -7,10 +8,16 @@
   * License:       Ruby License
 
 =end
-require 'rubygems'
+# TODO
+# a possible optimization.
+# when listing there's a lot of stuff that can be avoided such as what is in init_vars
+# as well as loading of config file.
+#
+#puts "XXX first comes here     #{Time.new.to_f} " # 2011-12-16 22:46:40
+# XXX why next line?
 $:.unshift File.expand_path(File.dirname(__FILE__) + '/../lib')
 require 'bugzyrb/common/colorconstants'
-require 'bugzyrb/common/sed'
+#require 'bugzyrb/common/sed' # are we using this at all
 require 'bugzyrb/common/cmdapp'
 require 'bugzyrb/version'
 require 'subcommand'
@@ -18,31 +25,11 @@ require 'sqlite3'
 require 'highline/import'
 require 'bugzyrb/common/db'
 include ColorConstants
-include Sed
+#include Sed
 include Cmdapp
 include Subcommands
 include Database
 
-# monkey_patch for terminal_table using coloring, does *not* work perfectly here
-# https://gist.github.com/625808
-# for 1.9.3 setting this to true was causing it to eat up first 'm' in task
-# and show no colors at all.
-ELIMINATE_ANSI_ESCAPE = false
-class String
-  alias_method :to_s_orig, :to_s
-  def to_s
-    str = self.to_s_orig
-    if ::ELIMINATE_ANSI_ESCAPE
-      str = str.sub(/^\e\[[\[\e0-9;m]+m/, "")
-      str = str.sub(/(\e\[[\[\e0-9;m]+m)$/, "")
-      # Above works for only one, beg or eol
-      str = str.gsub(/\e\[[\[\e0-9;m]+m/, "")
-      #str = str.gsub(/(\e\[[\[\e0-9;m]+m)/, "")
-    end
-    str
-  end
-end
-# end monkey
 #
 VERSION = Bugzyrb::Version::STRING
 DATE = "2011-12-06"
@@ -96,21 +83,19 @@ class Bugzy
     ## data is a 2 dim array: rows and fields. It contains each row of the file
     # as an array of strings. The item number is space padded.
     @data = []
+    #puts "XXX starting up ...       #{Time.new.to_f} "
     init_vars
   end
   def init_vars
     @app_default_action = "list" # TODO:
     @file = @app_file_path = @options[:file] || "bugzy.sqlite"
-    #@app_serial_path = File.expand_path("~/serial_numbers")
-    #@deleted_path = "todo_deleted.txt"
-    #@todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
     # in order to support the testing framework
     t = Time.now
     #ut = ENV["TODO_TEST_TIME"]
     #t = Time.at(ut.to_i) if ut
     @now = t.strftime("%Y-%m-%d %H:%M:%S")
-    @today = t.strftime("%Y-%m-%d")
+    #@today = t.strftime("%Y-%m-%d")
     @verbose = @options[:verbose]
     # menu MENU
     @valid_type = %w[bug enhancement feature task] 
@@ -126,7 +111,7 @@ class Bugzy
     $default_assigned_to = "unassigned"
     $default_due = 5 # how many days in advance due date should be
     #$bare = @options[:bare]
-      $use_readline = true
+    $use_readline = true
     $g_row = nil
     # we need to load the cfg file here, if given # , or else in home dir.
     if @options[:config]
@@ -668,14 +653,25 @@ TEXT
       end
       # NOTE: terminal table gets the widths wrong because of coloring info.
       if @options[:colored]
-        #require 'colored'
+        fmt = ""
+        headings.each_with_index { |e, i| fmt << "%#{e.size+1}s " }
+        fmt << "\n"
+        b= fmt % headings
+        print b
+        b1 = b.tr('a-zA-Z','-')
+        print b1
+
         startrow = nil
         fr = titleindex
+        grey="\x1b[38;5;236m" # nice if you have 256 colors
+        p4grey="\x1b[38;5;239m" # nice if you have 256 colors
+        p3grey="\x1b[38;5;244m" # nice if you have 256 colors
+        p5blue="\x1b[38;5;57m" # some kinda blue
         rows.each_with_index do |e, index|  
           s = e[titleindex] 
           s.gsub!("\n", ";")
           s.gsub!(/(#\w+)/,"#{UNDERLINE}\\1#{UNDERLINE_OFF}")
-          s.gsub!(/(>>.*)/,"#{GREEN}\\1#{CLEAR}")
+          s.gsub!(/(>>.*)/,"#{grey}\\1#{CLEAR}")
           st = e[statindex]
           e[statindex] = e[statindex][0,2]
           e[typeindex] = e[typeindex][0,3] if typeindex
@@ -700,8 +696,14 @@ TEXT
             if priindex
               pri = e[priindex]
               case pri
-              when "P4", "P5"
-                e[fr] = "#{BLUE}#{frv}"
+              when "P5"
+                e[fr] = "#{p5blue}#{frv}"
+                e[-1] = "#{e[-1]}#{CLEAR}"
+              when "P4"
+                e[fr] = "#{p4grey}#{frv}"
+                e[-1] = "#{e[-1]}#{CLEAR}"
+              when "P3"
+                e[fr] = "#{p3grey}#{frv}"
                 e[-1] = "#{e[-1]}#{CLEAR}"
               when "P1"
                 e[fr] = "#{YELLOW}#{ON_RED}#{frv}"
@@ -716,16 +718,30 @@ TEXT
           end
 
           #print "#{format}\n" % e
+          print fmt % e 
         end
-        rows.insert(startrow, :separator) if startrow
+        #rows.insert(startrow, :separator) if startrow
         #return
+      else
+        table(headings, rows)
       end
       # pretty output tabular format etc
-      require 'terminal-table/import'
-      table = table(headings, *rows)
-      puts table
+      #require 'terminal-table/import'
+      #table = table(headings, *rows)
+      #puts table
+      #table(headings, rows)
       end
     end
+  def table(headings, rows)
+    fmt = ""
+    headings.each_with_index { |e, i| fmt << "%#{e.size+1}s " }
+    fmt << "\n"
+    b= fmt % headings
+    print b
+    b1 = b.tr('a-zA-Z','-')
+    print b1
+    rows.each { |e| print fmt % e }
+  end
   ## validate user entered id
   # All methods should call this first.
   # @param [Fixnum] id (actually can be String) to validate
@@ -1020,6 +1036,7 @@ TEXT
   def self.main args
     ret = nil
     begin
+      #puts "XXX before parsing options     #{Time.new.to_f} "
       # http://www.ruby-doc.org/stdlib/libdoc/optparse/rdoc/classes/OptionParser.html
       require 'optparse'
       options = {}
@@ -1040,6 +1057,7 @@ TEXT
         options[:config] = config
         #puts "found  #{config} "
       end
+
 
   Subcommands::global_options do |opts|
     opts.banner = "Usage: #{APPNAME} [options] [subcommand [options]]"
@@ -1287,7 +1305,9 @@ TEXT
   end
   #raise "-f FILENAME is mandatory" unless options[:file]
 
-  c = Bugzy.new(options, args)
+    #puts "XXX after parsing options #{Time.new.to_f} " # 2011-12-16 22:46:35
+    c = Bugzy.new(options, args)
+    #puts "XXX before run            #{Time.new.to_f} "
   ret = c.run
     ensure
     end
