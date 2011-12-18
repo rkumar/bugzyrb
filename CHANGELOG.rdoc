@@ -1,3 +1,7 @@
+ 2011-12-18 
+* Commented out require of sed.rb - I hope its not required somewhere
+* removed dependency on terminal-table
+
 = bugzyrb 0.3.4, 2011-09-28 
 * default list will not show closed
 * --show-all to show closed
