@@ -49,6 +49,7 @@ module Cmdapp
   def run
     @action = @argv[0] || @app_default_action
     @action = @action.downcase
+    init_defaults
 
 
     ret = 0
