@@ -90,34 +90,75 @@ class Bugzy
     @app_default_action = "list" # TODO:
     @file = @app_file_path = @options[:file] || "bugzy.sqlite"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
-    # in order to support the testing framework
-    t = Time.now
-    #ut = ENV["TODO_TEST_TIME"]
-    #t = Time.at(ut.to_i) if ut
-    @now = t.strftime("%Y-%m-%d %H:%M:%S")
-    #@today = t.strftime("%Y-%m-%d")
-    @verbose = @options[:verbose]
-    # menu MENU
-    @valid_type = %w[bug enhancement feature task] 
-    @valid_severity = %w[normal critical moderate] 
-    @valid_status = %w[open started closed stopped canceled] 
-    @valid_priority = %w[P1 P2 P3 P4 P5] 
-    $prompt_desc = $prompt_type = $prompt_status = $prompt_severity = $prompt_assigned_to = $prompt_priority = true
-    $default_priority = nil
-    $default_type = "bug"
-    $default_severity = "normal"
-    $default_status = "open"
-    $default_priority = "P3"
-    $default_assigned_to = "unassigned"
-    $default_due = 5 # how many days in advance due date should be
-    #$bare = @options[:bare]
-    $use_readline = true
-    $g_row = nil
+  end
+  #
+  # this is called by cmdapp by which time it knows what action we have
+  def init_defaults
+    if @action == "list"
+      init_colors
+    else
+
+      # only for adding a bug
+      t = Time.now
+      # in order to support the testing framework
+      #ut = ENV["TODO_TEST_TIME"]
+      #t = Time.at(ut.to_i) if ut
+      @now = t.strftime("%Y-%m-%d %H:%M:%S")
+      #@today = t.strftime("%Y-%m-%d")
+      @verbose = @options[:verbose]
+      # menu MENU
+      @valid_type = %w[bug enhancement feature task] 
+      @valid_severity = %w[normal critical moderate] 
+      @valid_status = %w[open started closed stopped canceled] 
+      @valid_priority = %w[P1 P2 P3 P4 P5] 
+      $prompt_desc = $prompt_type = $prompt_status = $prompt_severity = $prompt_assigned_to = $prompt_priority = true
+      $default_priority = nil
+      $default_type = "bug"
+      $default_severity = "normal"
+      $default_status = "open"
+      $default_priority = "P3"
+      $default_assigned_to = "unassigned"
+      $default_due = 5 # how many days in advance due date should be
+      #$bare = @options[:bare]
+      $use_readline = true
+      $g_row = nil
+    end
     # we need to load the cfg file here, if given # , or else in home dir.
+    # we place this here so it can override defaults
     if @options[:config]
       load @options[:config]
     end
   end
+  # setting for colors
+  # Ideally we should check for whether any have been overriden in config file
+  # If you nilify these in config, then that color will not be highlighted at all
+  def init_colors
+    $desc_color = "#{GREEN}"  # color of description portion
+    # color the title based on priority
+    $p5color = "#{BLUE}#{BOLD}" 
+    $p4color = "#{MAGENTA}" 
+    $p3color = "#{CYAN}#{BOLD}" 
+    $p2color = "#{BOLD}"
+    $p1color = "#{YELLOW}#{ON_RED}"
+    #
+    # color for only the type column
+    $bugcolor = "#{BLACK}#{ON_RED}"
+    $enhcolor = "#{GREEN}"
+    $feacolor = "#{CYAN}"
+
+    # color for row of started event
+    $startedcolor = "#{STANDOUT}"
+
+    cols = %x[tput colors] rescue 8
+    cols = cols.to_i
+    if cols >= 256
+      $desc_color = "\x1b[38;5;236m" # 256 colors, grey
+      $p5color = "\x1b[38;5;57m" # some kinda blue
+      $p4color = "\x1b[38;5;239m" # grey. 256 colors
+      $p3color = "\x1b[38;5;244m" # grey, 256 colors
+    end
+  end
+
   %w[type severity status priority].each do |f| 
     eval(
     "def validate_#{f}(value)
@@ -560,6 +601,8 @@ TEXT
   #   list testing
   #   list crash -windows
   #   list -- -linux
+  #   list --no-sort
+  #
   def list args
     # lets look at args as search words
     incl, excl = Cmdapp._list_args args
@@ -568,11 +611,17 @@ TEXT
     #end
     # will not be able to find title due to function
     descdelim = '>>'
+    maxcols = %x[tput cols] rescue 80
+    maxcols = maxcols.to_i
+    maxcols = 80 if maxcols == 0
+    w = maxcols - 15 -4 # trying to extend it as much as possible, but one or 2 cols less
     #fields = 'id,status,type,priority,substr(title || "  >>" ||  ifnull(description,""),0,85)'
-    fields = %Q[id,status,type,priority,substr(title || "  #{descdelim}" ||  ifnull(description,""),0,85)]
-    format = "%-3s | %-7s | %-5s | %-60s "
+    fields = %Q[id,status,type,priority,substr(title || "  #{descdelim}" ||  ifnull(description,""),0,#{w})]
+    # NOTE format no longer used, we use fmt !! 2011-12-18 
+    format = "%-3s | %-6s | %-4s | %-#{w}s"
+    #format = "%-3s | %-7s | %-5s | %-100s"
     if @options[:short]
-      fields = "id,status,title"
+      fields = "id,priority,title"
       format = "%3s | %6s | %60s "
     elsif @options[:long]
       fields = "id,status,priority,title,description"
@@ -610,6 +659,7 @@ TEXT
     if where
       wherestring = " where " + where.join(" and ")
     end
+    orderstring = " order by id " unless @options[:sort]
     orderstring ||= " order by status asc, priority desc " # 2011-09-30  so highest prio comes at end
     puts wherestring if @options[:verbose]
 
@@ -653,6 +703,8 @@ TEXT
       end
       # NOTE: terminal table gets the widths wrong because of coloring info.
       if @options[:colored]
+        # we build a format fmt based on ... size of headings (lol)
+        # and there's no delimiter to boot. 2011-12-19 
         fmt = ""
         headings.each_with_index { |e, i| fmt << "%#{e.size+1}s " }
         fmt << "\n"
@@ -663,53 +715,52 @@ TEXT
 
         startrow = nil
         fr = titleindex
-        grey="\x1b[38;5;236m" # nice if you have 256 colors
-        p4grey="\x1b[38;5;239m" # nice if you have 256 colors
-        p3grey="\x1b[38;5;244m" # nice if you have 256 colors
-        p5blue="\x1b[38;5;57m" # some kinda blue
         rows.each_with_index do |e, index|  
           s = e[titleindex] 
           s.gsub!("\n", ";")
           s.gsub!(/(#\w+)/,"#{UNDERLINE}\\1#{UNDERLINE_OFF}")
-          s.gsub!(/(>>.*)/,"#{grey}\\1#{CLEAR}")
-          st = e[statindex]
-          e[statindex] = e[statindex][0,2]
+          s.gsub!(/(>>.*)/,"#{$desc_color}\\1#{CLEAR}") if $desc_color
+          if statindex
+            st = e[statindex]
+            e[statindex] = e[statindex][0,2]
+          end
           e[typeindex] = e[typeindex][0,3] if typeindex
           if typeindex
             case e[typeindex]
             when 'bug'
-              e[typeindex] = "#{RED}#{e[typeindex]}#{CLEAR}"
+              e[typeindex] = "#{$bugcolor}#{e[typeindex]}#{CLEAR}" if $bugcolor
             when 'enh'
-              e[typeindex] = "#{WHITE}#{e[typeindex]}#{CLEAR}"
+              e[typeindex] = "#{$enhcolor}#{e[typeindex]}#{CLEAR}" if $enhcolor
             else
-              e[typeindex] = "#{CYAN}#{e[typeindex]}#{CLEAR}"
+              e[typeindex] = "#{$feacolor}#{e[typeindex]}#{CLEAR}" if $feacolor
             end
           end
           frv = e[fr]
           if st == 'started'
             startrow = index unless startrow
-            e[fr] = "#{STANDOUT}#{frv}" # changed 2011 dts   whole line green
-            #e[0] = e[0].to_s.red
-
-            e[-1] = "#{e[-1]}#{CLEAR}"
+            if $startedcolor
+              e[fr] = "#{$startedcolor}#{frv}" # highlight started tasks
+              e[-1] = "#{e[-1]}#{CLEAR}"
+            end
           else
             if priindex
               pri = e[priindex]
               case pri
               when "P5"
-                e[fr] = "#{p5blue}#{frv}"
+                e[fr] = "#{$p5color}#{frv}" if $p5color
                 e[-1] = "#{e[-1]}#{CLEAR}"
               when "P4"
-                e[fr] = "#{p4grey}#{frv}"
+                e[fr] = "#{$p4color}#{frv}" if $p4color
                 e[-1] = "#{e[-1]}#{CLEAR}"
               when "P3"
-                e[fr] = "#{p3grey}#{frv}"
+                e[fr] = "#{$p3color}#{frv}" if $p3color
                 e[-1] = "#{e[-1]}#{CLEAR}"
               when "P1"
-                e[fr] = "#{YELLOW}#{ON_RED}#{frv}"
+                #e[fr] = "#{YELLOW}#{ON_RED}#{frv}"
+                e[fr] = "#{$p1color}#{frv}" if $p1color
                 e[-1] = "#{e[-1]}#{CLEAR}"
               when "P2"
-                e[fr] = "#{BOLD}#{frv}"
+                e[fr] = "#{$p2color}#{frv}" if $p2color
                 e[-1] = "#{e[-1]}#{CLEAR}"
               else
             #e[fr] = "#{CLEAR}#{frv}"
@@ -1042,6 +1093,7 @@ TEXT
       options = {}
       options[:verbose] = false
       options[:colored] = true
+      options[:sort] = true
       $bare = false
       # adding some env variable pickups, so you don't have to keep passing.
       showall = ENV["TODO_SHOW_ALL"]
@@ -1232,6 +1284,10 @@ TEXT
     opts.on("-u","--unassigned", "not assigned") { |v|
       options[:unassigned] = v
     }
+    # added no-sort on 2011-12-19 so we can get based on id
+    opts.on("--[no-]sort", "don't sort") do |v|
+      options[:sort] = v
+    end
   end
   Subcommands::command :viewlogs do |opts|
     opts.banner = "Usage: viewlogs [options] ISSUE_NO"
