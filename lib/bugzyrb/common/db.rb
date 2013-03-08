@@ -1,14 +1,16 @@
 #!/usr/bin/env ruby -w
-require 'rubygems'
+#require 'rubygems'
 require 'sqlite3'
 require 'pp'
-#require 'arrayfields' # removed 2011-09-21 
 module Database
   class DB
     attr_accessor :db
 
     def initialize dbname="bugzy.sqlite"
-      raise "#{dbname} does not exist. Try --help" unless File.exists? dbname
+      unless File.exists? dbname
+        puts "#{dbname} does not exist. Try 'init' or '-d path' or '--help'" 
+        exit -1
+      end
       @db = SQLite3::Database.new(dbname)
       $now = Time.now
       $num = rand(100)
