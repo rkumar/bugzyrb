@@ -7,8 +7,6 @@ This is not an extensive, full-fledged bug or issue tracker such a bugzilla. Its
 
 Maintains priority, severity, status, fix, comments.  All updates are logged.
 
-A change in Sqlite3 not supporting arrayfields resulted in everything crashing. I've now fixed that -- finally.
-
 == Purpose
 
 There are already other command-line bug trackers, some ruby some not. I've had problems installing many. As far as ruby ones, some do not work on 1.9 and this bug has not been rectified for over a year. Others rely on gems that are broken and the maintainer has abandoned them.
@@ -48,15 +46,16 @@ Depends on :
 * terminal-table - for formatting output (this is optional)
   if you use list --bare, then you don't need this gem
 
-Install [Gemcutter](http://gemcutter.org) and execute:
     $ gem install bugzyrb
 
 == Example
-TODO
 
-init:  Initialize a database with tables
-add:   Add an issue -- will prompt for fields
+init:  Initialize a database with tables  
+
+add:   Add an issue -- will prompt for fields  
+
 qadd:  Add an issue -- will use defaults for all fields but title
+
 view:  view given issue (or last entered)
 
     bugzyrb help
@@ -86,13 +85,8 @@ view:  view given issue (or last entered)
 
 == Known Issues
 
-For some reason, this loads slowly (I am on OSX Lion, ruby 1.9.3 and
-1.9.especially), 2 the first time. My other program, bugzy.txt (also on github)
-lists out bugs instantly. Seems to be a gem load issue. 
-I use this program for bugs, and bugzy.txt for features.
+I've also written a couple of shell-scripts for reporting from the sql tables 
 
-I've also written a couple of shell-scripts for reporting from the sql tables, these 
-scripts print reports instantly.
 https://gist.github.com/1437194
 https://gist.github.com/1437244
 
