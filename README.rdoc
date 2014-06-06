@@ -9,9 +9,9 @@ Maintains priority, severity, status, fix, comments.  All updates are logged.
 
 == Purpose
 
-There are already other command-line bug trackers, some ruby some not. I've had problems installing many. As far as ruby ones, some do not work on 1.9 and this bug has not been rectified for over a year. Others rely on gems that are broken and the maintainer has abandoned them.
+There are already other command-line bug trackers, some ruby, some not. I've had problems installing many. As far as ruby ones, some do not work on 1.9 and this bug has not been rectified for over a year. Others rely on gems that are broken and the maintainer has abandoned them.
 
-So finally, for personal needs I wrote bugzy.sh (bugzy.txt). However, that's bash shell based, and relies on GNU's coreutils being installed with default_names options. I wish to get out of the mess of bash commands having different options across BSD and GNU ( I use a Mac, and use GNU coreutils ).
+So finally, for personal needs I wrote bugzy.sh (bugzy.txt). However, that is bash shell based, and relies on GNU's coreutils being installed with default_names options. I wish to get out of the mess of bash commands having different options across BSD and GNU ( I use a Mac, and use GNU coreutils ).
 So I am rewriting this simple issue tracker in ruby with sqlite3. The advantage over having data in a SQL database is that the user can query it easily. With having data in separate Yaml files, searching filtering etc is a big pain.
 
 == Features
@@ -21,7 +21,16 @@ So I am rewriting this simple issue tracker in ruby with sqlite3. The advantage 
 * Various reports
 
 == Changes
-0.4.0 has a backward-incompatible change.
+
+=== 0.5.0 
+
+* Removed dependence on `terminal-table` which gives errors with colored output.
+* Removed dependence on array_fields due to changes in sqlite3.
+* Takes columns of terminal thus listing takes entire available width.
+
+=== 0.4.0 
+
+   0.4.0 has a backward-incompatible change.
 
 "priority" took priority code first then item numbers. all other commands take item numbers first and then other information. So now priority also takes item numbers first. 
 
@@ -34,17 +43,15 @@ Now you would do:
     bu priority 3 4 5 P5
 
 == Installation
+
 sqlite3 itself has to be installed 
 
     brew install sqlite3
 
-TODO
 Depends on :
 * subcommand (tiny wrapper over optionparser for subcommands)
 * sqlite3
 * highline - for accepting some input
-* terminal-table - for formatting output (this is optional)
-  if you use list --bare, then you don't need this gem
 
     $ gem install bugzyrb
 
