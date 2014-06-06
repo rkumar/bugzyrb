@@ -1,3 +1,8 @@
+= bugzyrb 0.5.0, 2014-06-06
+* removed dependency to arrayfields and terminal table
+* various other changes, am coming in after a long time
+  and seeing changes over the 0.4.0 version.
+
  2011-12-18 
 * Commented out require of sed.rb - I hope its not required somewhere
 * removed dependency on terminal-table
