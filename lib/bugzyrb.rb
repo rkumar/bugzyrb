@@ -638,16 +638,14 @@ TEXT
     wherestring = ""
     if @options[:open]
       where ||= []
-      where <<  %{ status != 'closed'} 
+      where <<  %{ status != 'closed' and status != 'canceled' } 
     end
     if @options[:overdue]
-      #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
       where ||= []
       where <<  %{ status != 'closed' and status != 'canceled'} 
       where <<  %{ due_date <= "#{Date.today}" }
     end
     if @options[:unassigned]
-      #where =  %{ where status != 'closed' and due_date <= "#{Date.today}" }
       where ||= []
       where <<  %{ (assigned_to = 'unassigned' or assigned_to is null) } 
     end
